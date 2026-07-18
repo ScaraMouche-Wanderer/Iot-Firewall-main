@@ -21,6 +21,34 @@ namespace DeviceDatabase {
 
     static uint16_t nextDeviceId = 1;
 
+    constexpr size_t DEVICE_HASH_SIZE = 64;
+    static int deviceHashTable[DEVICE_HASH_SIZE];
+
+    inline size_t macHash64(const uint8_t* mac) {
+        if (mac == nullptr) return 0;
+        uint32_t hash = 2166136261u;
+        for (int i = 0; i < MAC_LENGTH; i++) {
+            hash ^= mac[i];
+            hash *= 16777619u;
+        }
+        return hash % DEVICE_HASH_SIZE;
+    }
+
+    static void rebuildDeviceHashTable() {
+        for (size_t i = 0; i < DEVICE_HASH_SIZE; i++) {
+            deviceHashTable[i] = -1;
+        }
+        for (int i = 0; i < deviceCount; i++) {
+            size_t h = macHash64(devices[i].mac);
+            size_t start = h;
+            while (deviceHashTable[h] != -1) {
+                h = (h + 1) % DEVICE_HASH_SIZE;
+                if (h == start) break;
+            }
+            deviceHashTable[h] = i;
+        }
+    }
+
     void initialize() {
         if (deviceMutex == nullptr) {
             deviceMutex = xSemaphoreCreateRecursiveMutex();
@@ -33,13 +61,22 @@ namespace DeviceDatabase {
 
     int findDevice(const uint8_t* mac) {
         RecursiveMutexLock lock(deviceMutex);
-        // Complexity: O(N) linear search.
-        // Future Optimization: Replace with a hash table (O(1) average lookup complexity).
-        for (int i = 0; i < deviceCount; i++) {
-            if (compareMacAddress(devices[i].mac, mac)) {
-                return i;
-            }
+        if (mac == nullptr || deviceCount == 0) {
+            return -1;
         }
+        size_t h = macHash64(mac);
+        size_t start = h;
+        do {
+            int idx = deviceHashTable[h];
+            if (idx == -1) {
+                return -1;
+            }
+            if (idx >= 0 && idx < deviceCount && compareMacAddress(devices[idx].mac, mac)) {
+                return idx;
+            }
+            h = (h + 1) % DEVICE_HASH_SIZE;
+        } while (h != start);
+
         return -1;
     }
 
@@ -102,6 +139,7 @@ namespace DeviceDatabase {
         // TODO: Trigger Event Engine Hook: EventType::DeviceCreated (e.g. eventEngine.publish(DeviceCreated, devices[newIndex]))
         
         deviceCount++;
+        rebuildDeviceHashTable();
 
         // Print legacy message to match console requirements
         if ((devices[newIndex].flags & DeviceFlags::WHITELISTED) == 0) {
@@ -237,6 +275,7 @@ namespace DeviceDatabase {
             devices[i] = devices[i + 1];
         }
         deviceCount--;
+        rebuildDeviceHashTable();
     }
 
     void cleanup() {
@@ -284,6 +323,7 @@ namespace DeviceDatabase {
     void clear() {
         RecursiveMutexLock lock(deviceMutex);
         deviceCount = 0;
+        rebuildDeviceHashTable();
     }
 
     void loadWhitelistFromNVS() {
@@ -511,23 +551,5 @@ namespace DeviceDatabase {
         }
 
         Serial.printf("Unknown command: '%s'. Type 'help' for CLI commands.\n", trimmed);
-    }
-
-    void processSerialCLI() {
-        static char inputBuffer[128];
-        static size_t bufIdx = 0;
-
-        while (Serial.available() > 0) {
-            char c = static_cast<char>(Serial.read());
-            if (c == '\r' || c == '\n') {
-                if (bufIdx > 0) {
-                    inputBuffer[bufIdx] = '\0';
-                    processCLICommand(inputBuffer);
-                    bufIdx = 0;
-                }
-            } else if (bufIdx < sizeof(inputBuffer) - 1) {
-                inputBuffer[bufIdx++] = c;
-            }
-        }
     }
 }

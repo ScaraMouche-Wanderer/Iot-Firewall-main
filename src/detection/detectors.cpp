@@ -1,8 +1,7 @@
 #include "detection/detectors.h"
 #include "core/detection_config.h"
+#include "core/config_manager.h"
 #include "network/device.h"
-
-static uint64_t nextEventId = 1;
 
 /* =========================================================
    DEAUTHENTICATION FLOOD DETECTOR
@@ -16,28 +15,38 @@ void DeauthDetector::process(const Observation& observation) {
     unsigned long now = observation.timestamp;
     window.add(now);
 
-    uint16_t count = window.countLast(DEAUTH_WINDOW_MS, now);
+    uint16_t threshold = ConfigManager::get().deauthThreshold;
+    unsigned long windowMs = ConfigManager::get().deauthWindowMs;
+    uint16_t count = window.countLast(windowMs, now);
 
-    if (count >= DEAUTH_THRESHOLD) {
+    if (count >= threshold) {
         // Avoid duplicate alerts within the same window duration
-        if (now - lastAlertTime < DEAUTH_WINDOW_MS) {
+        if (now - lastAlertTime < windowMs) {
             return;
         }
         lastAlertTime = now;
 
         ThreatEvent event;
-        event.id = nextEventId++;
+        memset(&event, 0, sizeof(ThreatEvent));
+        event.id = ThreatEngine::nextEventId();
         event.timestamp = now;
         event.type = ThreatType::DeauthenticationAttack;
         event.triggeringObservation = observation.type;
-        event.observation = &observation;
+
+        // Copy BSSID inline instead of storing a dangling pointer
+        if (observation.bssid != nullptr) {
+            memcpy(event.bssid, observation.bssid, 6);
+            event.hasBssid = true;
+        } else {
+            event.hasBssid = false;
+        }
 
         // Escalate severity depending on deauth rate
-        if (count >= DEAUTH_THRESHOLD * CRITICAL_RATIO) {
+        if (count >= static_cast<uint16_t>(threshold * CRITICAL_RATIO)) {
             event.severity = ThreatSeverity::Critical;
-        } else if (count >= DEAUTH_THRESHOLD * HIGH_RATIO) {
+        } else if (count >= static_cast<uint16_t>(threshold * HIGH_RATIO)) {
             event.severity = ThreatSeverity::High;
-        } else if (count >= DEAUTH_THRESHOLD * MEDIUM_RATIO) {
+        } else if (count >= static_cast<uint16_t>(threshold * MEDIUM_RATIO)) {
             event.severity = ThreatSeverity::Medium;
         } else {
             event.severity = ThreatSeverity::Low;
@@ -59,9 +68,9 @@ void DeauthDetector::process(const Observation& observation) {
 
 void DeauthDetector::printDebugStats() const {
     unsigned long now = millis();
-    uint16_t count = window.countLast(DEAUTH_WINDOW_MS, now);
+    uint16_t count = window.countLast(ConfigManager::get().deauthWindowMs, now);
     unsigned long ago = (lastAlertTime == 0) ? 0 : (now - lastAlertTime);
-    Serial.printf("[%s]\nWindow Count: %u | Threshold: %u | Last Alert: %lu ms ago\n\n", name(), count, DEAUTH_THRESHOLD, ago);
+    Serial.printf("[%s]\nWindow Count: %u | Threshold: %u | Last Alert: %lu ms ago\n\n", name(), count, ConfigManager::get().deauthThreshold, ago);
 }
 
 /* =========================================================
@@ -76,28 +85,38 @@ void BeaconFloodDetector::process(const Observation& observation) {
     unsigned long now = observation.timestamp;
     window.add(now);
 
-    uint16_t count = window.countLast(BEACON_WINDOW_MS, now);
+    uint16_t threshold = ConfigManager::get().beaconThreshold;
+    unsigned long windowMs = ConfigManager::get().beaconWindowMs;
+    uint16_t count = window.countLast(windowMs, now);
 
-    if (count >= BEACON_THRESHOLD) {
+    if (count >= threshold) {
         // Avoid duplicate alerts within the same window duration
-        if (now - lastAlertTime < BEACON_WINDOW_MS) {
+        if (now - lastAlertTime < windowMs) {
             return;
         }
         lastAlertTime = now;
 
         ThreatEvent event;
-        event.id = nextEventId++;
+        memset(&event, 0, sizeof(ThreatEvent));
+        event.id = ThreatEngine::nextEventId();
         event.timestamp = now;
         event.type = ThreatType::BeaconFlood;
         event.triggeringObservation = observation.type;
-        event.observation = &observation;
+
+        // Copy BSSID inline
+        if (observation.bssid != nullptr) {
+            memcpy(event.bssid, observation.bssid, 6);
+            event.hasBssid = true;
+        } else {
+            event.hasBssid = false;
+        }
 
         // Escalate severity depending on beacon rate
-        if (count >= BEACON_THRESHOLD * CRITICAL_RATIO) {
+        if (count >= static_cast<uint16_t>(threshold * CRITICAL_RATIO)) {
             event.severity = ThreatSeverity::Critical;
-        } else if (count >= BEACON_THRESHOLD * HIGH_RATIO) {
+        } else if (count >= static_cast<uint16_t>(threshold * HIGH_RATIO)) {
             event.severity = ThreatSeverity::High;
-        } else if (count >= BEACON_THRESHOLD * MEDIUM_RATIO) {
+        } else if (count >= static_cast<uint16_t>(threshold * MEDIUM_RATIO)) {
             event.severity = ThreatSeverity::Medium;
         } else {
             event.severity = ThreatSeverity::Low;
@@ -118,9 +137,9 @@ void BeaconFloodDetector::process(const Observation& observation) {
 
 void BeaconFloodDetector::printDebugStats() const {
     unsigned long now = millis();
-    uint16_t count = window.countLast(BEACON_WINDOW_MS, now);
+    uint16_t count = window.countLast(ConfigManager::get().beaconWindowMs, now);
     unsigned long ago = (lastAlertTime == 0) ? 0 : (now - lastAlertTime);
-    Serial.printf("[%s]\nWindow Count: %u | Threshold: %u | Last Alert: %lu ms ago\n\n", name(), count, BEACON_THRESHOLD, ago);
+    Serial.printf("[%s]\nWindow Count: %u | Threshold: %u | Last Alert: %lu ms ago\n\n", name(), count, ConfigManager::get().beaconThreshold, ago);
 }
 
 /* =========================================================
@@ -135,28 +154,38 @@ void ProbeFloodDetector::process(const Observation& observation) {
     unsigned long now = observation.timestamp;
     window.add(now);
 
-    uint16_t count = window.countLast(PROBE_WINDOW_MS, now);
+    uint16_t threshold = ConfigManager::get().probeThreshold;
+    unsigned long windowMs = ConfigManager::get().probeWindowMs;
+    uint16_t count = window.countLast(windowMs, now);
 
-    if (count >= PROBE_THRESHOLD) {
+    if (count >= threshold) {
         // Avoid duplicate alerts within the same window duration
-        if (now - lastAlertTime < PROBE_WINDOW_MS) {
+        if (now - lastAlertTime < windowMs) {
             return;
         }
         lastAlertTime = now;
 
         ThreatEvent event;
-        event.id = nextEventId++;
+        memset(&event, 0, sizeof(ThreatEvent));
+        event.id = ThreatEngine::nextEventId();
         event.timestamp = now;
         event.type = ThreatType::ProbeFlood;
         event.triggeringObservation = observation.type;
-        event.observation = &observation;
+
+        // Copy BSSID inline
+        if (observation.bssid != nullptr) {
+            memcpy(event.bssid, observation.bssid, 6);
+            event.hasBssid = true;
+        } else {
+            event.hasBssid = false;
+        }
 
         // Escalate severity depending on probe request rate
-        if (count >= PROBE_THRESHOLD * CRITICAL_RATIO) {
+        if (count >= static_cast<uint16_t>(threshold * CRITICAL_RATIO)) {
             event.severity = ThreatSeverity::Critical;
-        } else if (count >= PROBE_THRESHOLD * HIGH_RATIO) {
+        } else if (count >= static_cast<uint16_t>(threshold * HIGH_RATIO)) {
             event.severity = ThreatSeverity::High;
-        } else if (count >= PROBE_THRESHOLD * MEDIUM_RATIO) {
+        } else if (count >= static_cast<uint16_t>(threshold * MEDIUM_RATIO)) {
             event.severity = ThreatSeverity::Medium;
         } else {
             event.severity = ThreatSeverity::Low;
@@ -177,7 +206,178 @@ void ProbeFloodDetector::process(const Observation& observation) {
 
 void ProbeFloodDetector::printDebugStats() const {
     unsigned long now = millis();
-    uint16_t count = window.countLast(PROBE_WINDOW_MS, now);
+    uint16_t count = window.countLast(ConfigManager::get().probeWindowMs, now);
     unsigned long ago = (lastAlertTime == 0) ? 0 : (now - lastAlertTime);
-    Serial.printf("[%s]\nWindow Count: %u | Threshold: %u | Last Alert: %lu ms ago\n\n", name(), count, PROBE_THRESHOLD, ago);
+    Serial.printf("[%s]\nWindow Count: %u | Threshold: %u | Last Alert: %lu ms ago\n\n", name(), count, ConfigManager::get().probeThreshold, ago);
+}
+
+/* =========================================================
+   DISASSOCIATION FLOOD DETECTOR
+========================================================= */
+
+void DisassociationFloodDetector::process(const Observation& observation) {
+    if (observation.type != ObservationType::DisassociationSent) {
+        return;
+    }
+
+    unsigned long now = observation.timestamp;
+    window.add(now);
+
+    uint16_t threshold = ConfigManager::get().deauthThreshold;
+    unsigned long windowMs = ConfigManager::get().deauthWindowMs;
+    uint16_t count = window.countLast(windowMs, now);
+
+    if (count >= threshold) {
+        if (now - lastAlertTime < windowMs) {
+            return;
+        }
+        lastAlertTime = now;
+
+        ThreatEvent event;
+        memset(&event, 0, sizeof(ThreatEvent));
+        event.id = ThreatEngine::nextEventId();
+        event.timestamp = now;
+        event.type = ThreatType::DisassociationFlood;
+        event.triggeringObservation = observation.type;
+
+        if (observation.bssid != nullptr) {
+            memcpy(event.bssid, observation.bssid, 6);
+            event.hasBssid = true;
+        } else {
+            event.hasBssid = false;
+        }
+
+        if (count >= static_cast<uint16_t>(threshold * CRITICAL_RATIO)) {
+            event.severity = ThreatSeverity::Critical;
+        } else if (count >= static_cast<uint16_t>(threshold * HIGH_RATIO)) {
+            event.severity = ThreatSeverity::High;
+        } else if (count >= static_cast<uint16_t>(threshold * MEDIUM_RATIO)) {
+            event.severity = ThreatSeverity::Medium;
+        } else {
+            event.severity = ThreatSeverity::Low;
+        }
+
+        int devIndex = DeviceDatabase::findDevice(observation.sourceMac);
+        if (devIndex != -1) {
+            const Device* dev = DeviceDatabase::getDevice(devIndex);
+            event.sourceDeviceId = dev->id;
+        } else {
+            event.sourceDeviceId = 0;
+        }
+
+        snprintf(event.description, sizeof(event.description), "Disassociation flood attack detected");
+        ThreatEngine::emitThreatEvent(event);
+    }
+}
+
+void DisassociationFloodDetector::printDebugStats() const {
+    unsigned long now = millis();
+    uint16_t count = window.countLast(ConfigManager::get().deauthWindowMs, now);
+    unsigned long ago = (lastAlertTime == 0) ? 0 : (now - lastAlertTime);
+    Serial.printf("[%s]\nWindow Count: %u | Threshold: %u | Last Alert: %lu ms ago\n\n", name(), count, ConfigManager::get().deauthThreshold, ago);
+}
+
+/* =========================================================
+   RSSI ANOMALY DETECTOR
+========================================================= */
+
+void RSSIAnomalyDetector::process(const Observation& observation) {
+    if (observation.sourceMac == nullptr) {
+        return;
+    }
+
+    int devIndex = DeviceDatabase::findDevice(observation.sourceMac);
+    if (devIndex == -1) {
+        return;
+    }
+
+    const Device* dev = DeviceDatabase::getDevice(devIndex);
+    if (dev == nullptr || dev->totalPackets < 10) {
+        return; // Need baseline packet history
+    }
+
+    // Check for sudden RSSI jump (> 25 dBm deviation from rolling average)
+    int rssiDiff = abs(static_cast<int>(observation.rssi) - static_cast<int>(dev->avgRSSI));
+    if (rssiDiff >= 25) {
+        unsigned long now = observation.timestamp;
+        if (now - lastAlertTime < 5000) {
+            return;
+        }
+        lastAlertTime = now;
+
+        ThreatEvent event;
+        memset(&event, 0, sizeof(ThreatEvent));
+        event.id = ThreatEngine::nextEventId();
+        event.timestamp = now;
+        event.type = ThreatType::RSSIAnomaly;
+        event.severity = ThreatSeverity::Medium;
+        event.sourceDeviceId = dev->id;
+        event.triggeringObservation = observation.type;
+
+        if (observation.bssid != nullptr) {
+            memcpy(event.bssid, observation.bssid, 6);
+            event.hasBssid = true;
+        }
+
+        snprintf(event.description, sizeof(event.description), "Sudden RSSI anomaly (%d dBm shift)", rssiDiff);
+        ThreatEngine::emitThreatEvent(event);
+    }
+}
+
+void RSSIAnomalyDetector::printDebugStats() const {
+    unsigned long now = millis();
+    unsigned long ago = (lastAlertTime == 0) ? 0 : (now - lastAlertTime);
+    Serial.printf("[%s]\nLast Alert: %lu ms ago\n\n", name(), ago);
+}
+
+/* =========================================================
+   CHANNEL ANOMALY DETECTOR
+========================================================= */
+
+void ChannelAnomalyDetector::process(const Observation& observation) {
+    if (observation.sourceMac == nullptr) {
+        return;
+    }
+
+    int devIndex = DeviceDatabase::findDevice(observation.sourceMac);
+    if (devIndex == -1) {
+        return;
+    }
+
+    const Device* dev = DeviceDatabase::getDevice(devIndex);
+    if (dev == nullptr || dev->totalPackets < 5) {
+        return;
+    }
+
+    // Check if client device shifts operating channel unexpectedly
+    if (dev->lastChannel != 0 && observation.channel != dev->lastChannel) {
+        unsigned long now = observation.timestamp;
+        if (now - lastAlertTime < 5000) {
+            return;
+        }
+        lastAlertTime = now;
+
+        ThreatEvent event;
+        memset(&event, 0, sizeof(ThreatEvent));
+        event.id = ThreatEngine::nextEventId();
+        event.timestamp = now;
+        event.type = ThreatType::ChannelAnomaly;
+        event.severity = ThreatSeverity::Low;
+        event.sourceDeviceId = dev->id;
+        event.triggeringObservation = observation.type;
+
+        if (observation.bssid != nullptr) {
+            memcpy(event.bssid, observation.bssid, 6);
+            event.hasBssid = true;
+        }
+
+        snprintf(event.description, sizeof(event.description), "Device shifted from channel %u to %u", dev->lastChannel, observation.channel);
+        ThreatEngine::emitThreatEvent(event);
+    }
+}
+
+void ChannelAnomalyDetector::printDebugStats() const {
+    unsigned long now = millis();
+    unsigned long ago = (lastAlertTime == 0) ? 0 : (now - lastAlertTime);
+    Serial.printf("[%s]\nLast Alert: %lu ms ago\n\n", name(), ago);
 }

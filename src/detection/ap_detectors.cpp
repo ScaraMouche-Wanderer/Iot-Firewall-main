@@ -3,8 +3,6 @@
 #include "core/detection_config.h"
 #include "core/utils.h"
 
-static uint64_t nextEventId = 100; // Offset IDs for AP events to distinguish them
-
 /* =========================================================
    ROGUE AP DETECTOR IMPLEMENTATION
 ========================================================= */
@@ -33,13 +31,21 @@ void RogueAPDetector::process(const Observation& observation) {
             lastAlertTime = now;
 
             ThreatEvent event;
-            event.id = nextEventId++;
+            memset(&event, 0, sizeof(ThreatEvent));
+            event.id = ThreatEngine::nextEventId();
             event.timestamp = now;
             event.type = ThreatType::RogueAccessPoint;
             event.severity = ThreatSeverity::High;
-            event.sourceDeviceId = 0; // AP events reference BSSID in observation instead of client ID
+            event.sourceDeviceId = 0; // AP events reference BSSID instead of client ID
             event.triggeringObservation = observation.type;
-            event.observation = &observation;
+
+            // Copy BSSID inline instead of storing dangling pointer
+            if (observation.bssid != nullptr) {
+                memcpy(event.bssid, observation.bssid, 6);
+                event.hasBssid = true;
+            } else {
+                event.hasBssid = false;
+            }
             
             char macStr[18];
             formatMacAddress(ap->bssid, macStr);
@@ -98,13 +104,21 @@ void EvilTwinDetector::process(const Observation& observation) {
                 lastAlertTime = now;
 
                 ThreatEvent event;
-                event.id = nextEventId++;
+                memset(&event, 0, sizeof(ThreatEvent));
+                event.id = ThreatEngine::nextEventId();
                 event.timestamp = now;
                 event.type = ThreatType::EvilTwin;
                 event.severity = ThreatSeverity::Critical; // Evil twins are critical alerts
                 event.sourceDeviceId = 0;
                 event.triggeringObservation = observation.type;
-                event.observation = &observation;
+
+                // Copy BSSID inline
+                if (observation.bssid != nullptr) {
+                    memcpy(event.bssid, observation.bssid, 6);
+                    event.hasBssid = true;
+                } else {
+                    event.hasBssid = false;
+                }
 
                 snprintf(event.description, sizeof(event.description), "Evil Twin SSID: %s", ap->ssid);
 

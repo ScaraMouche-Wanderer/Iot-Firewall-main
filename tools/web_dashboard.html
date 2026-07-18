@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 IoT Firewall & WIDS Live Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --bg-card: rgba(30, 41, 59, 0.7);
+            --border-card: rgba(255, 255, 255, 0.08);
+            --primary: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.25);
+            --accent-red: #ef4444;
+            --accent-orange: #f97316;
+            --accent-yellow: #eab308;
+            --accent-green: #10b981;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(239, 68, 68, 0.05) 0px, transparent 50%);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        /* Header Navigation */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-card);
+            border-radius: 16px;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0284c7, #38bdf8);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .brand-text h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .brand-text p {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        select, button, input {
+            font-family: inherit;
+            font-size: 13px;
+            border-radius: 8px;
+            border: 1px solid var(--border-card);
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        select {
+            background: rgba(15, 23, 42, 0.8);
+            color: var(--text-main);
+            padding: 8px 12px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            color: white;
+            font-weight: 600;
+            padding: 9px 18px;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(2, 132, 199, 0.4);
+        }
+
+        button.btn-danger {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        }
+
+        button.btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--border-card);
+            box-shadow: none;
+        }
+
+        button.btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .status-pill.connected {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Metrics Summary Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-card);
+            border-radius: 14px;
+            padding: 18px 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .metric-card .title {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .metric-card .value {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        .metric-card.alert-card .value { color: var(--accent-red); }
+        .metric-card.device-card .value { color: var(--primary); }
+        .metric-card.ap-card .value { color: var(--accent-orange); }
+        .metric-card.stream-card .value { color: var(--accent-green); }
+
+        /* Main Content Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-card);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            max-height: 340px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.6);
+            color: var(--text-sub);
+            font-weight: 600;
+            padding: 10px 12px;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* Alert Cards Feed */
+        .alert-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 340px;
+            overflow-y: auto;
+        }
+
+        .alert-item {
+            background: rgba(15, 23, 42, 0.8);
+            border-left: 4px solid var(--accent-red);
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .alert-item.sev-critical { border-left-color: var(--accent-red); }
+        .alert-item.sev-high { border-left-color: var(--accent-orange); }
+        .alert-item.sev-medium { border-left-color: var(--accent-yellow); }
+        .alert-item.sev-low { border-left-color: var(--primary); }
+
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .alert-type {
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+        }
+
+        .badge-critical { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .badge-high { background: rgba(249, 115, 22, 0.2); color: var(--accent-orange); }
+        .badge-medium { background: rgba(234, 179, 8, 0.2); color: var(--accent-yellow); }
+        .badge-low { background: rgba(56, 189, 248, 0.2); color: var(--primary); }
+
+        .alert-desc {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        /* Console Section */
+        .console-card {
+            margin-top: 24px;
+        }
+
+        .console-input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .console-input-group input {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.9);
+            color: var(--text-main);
+            padding: 10px 14px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .quick-cmds {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .quick-cmd-btn {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-sub);
+            padding: 5px 10px;
+            font-size: 11px;
+            border-radius: 6px;
+            border: 1px solid var(--border-card);
+            box-shadow: none;
+        }
+
+        .quick-cmd-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .terminal {
+            background: #020617;
+            border: 1px solid var(--border-card);
+            border-radius: 10px;
+            padding: 14px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #38bdf8;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="brand">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text">
+                <h1>ESP32 IoT Firewall</h1>
+                <p>Web Serial API WIDS Dashboard</p>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div id="statusPill" class="status-pill">
+                <span class="status-dot"></span>
+                <span id="statusText">Disconnected</span>
+            </div>
+
+            <select id="baudRate">
+                <option value="115200" selected>115200 Baud</option>
+                <option value="9600">9600 Baud</option>
+                <option value="921600">921600 Baud</option>
+            </select>
+
+            <button id="connectBtn">Connect Serial Port</button>
+            <button id="pauseBtn" class="btn-secondary" disabled>Pause Stream</button>
+            <button id="clearBtn" class="btn-secondary">Clear Data</button>
+        </div>
+    </header>
+
+    <!-- Metrics Summary Grid -->
+    <div class="metrics-grid">
+        <div class="metric-card alert-card">
+            <div class="title">Active Security Alerts</div>
+            <div id="alertCount" class="value">0</div>
+        </div>
+        <div class="metric-card device-card">
+            <div class="title">Tracked Devices</div>
+            <div id="deviceCount" class="value">0</div>
+        </div>
+        <div class="metric-card ap-card">
+            <div class="title">Active Access Points</div>
+            <div id="apCount" class="value">0</div>
+        </div>
+        <div class="metric-card stream-card">
+            <div class="title">Stream Packets Read</div>
+            <div id="streamCount" class="value">0</div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Grid -->
+    <div class="dashboard-grid">
+        
+        <!-- Live Security Alerts Feed -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">⚡ Live Security Threat Alerts</div>
+            </div>
+            <div id="alertFeed" class="alert-feed">
+                <div style="color: var(--text-sub); font-size: 13px; text-align: center; padding: 40px 0;">
+                    No security threats detected yet. Connect serial port to begin live monitoring.
+                </div>
+            </div>
+        </div>
+
+        <!-- Tracked Devices Table -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">📱 Tracked Client Devices</div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>MAC Address</th>
+                            <th>RSSI</th>
+                            <th>Packets</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deviceTableBody">
+                        <tr><td colspan="4" style="text-align: center; color: var(--text-sub);">No devices discovered</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Access Points Table -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <div class="card-title">📡 Active Access Points (APs)</div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>BSSID</th>
+                        <th>SSID</th>
+                        <th>CH</th>
+                        <th>RSSI</th>
+                        <th>Beacons</th>
+                    </tr>
+                </thead>
+                <tbody id="apTableBody">
+                    <tr><td colspan="6" style="text-align: center; color: var(--text-sub);">No Access Points discovered</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Interactive Serial Console Drawer -->
+    <div class="card console-card">
+        <div class="card-header">
+            <div class="card-title">💻 Interactive Serial CLI Console</div>
+        </div>
+
+        <div class="quick-cmds">
+            <button class="quick-cmd-btn" onclick="sendQuickCmd('help')">help</button>
+            <button class="quick-cmd-btn" onclick="sendQuickCmd('list devices')">list devices</button>
+            <button class="quick-cmd-btn" onclick="sendQuickCmd('list aps')">list aps</button>
+            <button class="quick-cmd-btn" onclick="sendQuickCmd('list alerts')">list alerts</button>
+            <button class="quick-cmd-btn" onclick="sendQuickCmd('logs dump')">logs dump</button>
+            <button class="quick-cmd-btn" onclick="sendQuickCmd('whitelist list')">whitelist list</button>
+            <button class="quick-cmd-btn" onclick="sendQuickCmd('config list')">config list</button>
+        </div>
+
+        <div class="console-input-group">
+            <input type="text" id="cmdInput" placeholder="Type CLI command (e.g. config set deauthThreshold 20)..." onkeypress="if(event.key==='Enter') sendConsoleCmd()">
+            <button id="sendBtn" onclick="sendConsoleCmd()">Send Command</button>
+        </div>
+
+        <div id="terminal" class="terminal">ESP32 WIDS Web Serial Console ready. Click 'Connect Serial Port' to link board.</div>
+    </div>
+
+    <!-- Web Serial API Application Logic -->
+    <script>
+        let port = null;
+        let reader = null;
+        let writer = null;
+        let isConnected = false;
+        let isPaused = false;
+
+        let totalStreamPackets = 0;
+        const devices = new Map();
+        const accessPoints = new Map();
+        const alerts = [];
+
+        const connectBtn = document.getElementById('connectBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const statusPill = document.getElementById('statusPill');
+        const statusText = document.getElementById('statusText');
+        const terminal = document.getElementById('terminal');
+
+        // Check Web Serial API Browser Support
+        if (!('serial' in navigator)) {
+            alert('Web Serial API is not supported in this browser. Please use Chrome, Edge, or Opera.');
+        }
+
+        connectBtn.addEventListener('click', async () => {
+            if (isConnected) {
+                await disconnectSerial();
+            } else {
+                await connectSerial();
+            }
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseBtn.textContent = isPaused ? 'Resume Stream' : 'Pause Stream';
+        });
+
+        clearBtn.addEventListener('click', () => {
+            devices.clear();
+            accessPoints.clear();
+            alerts.length = 0;
+            totalStreamPackets = 0;
+            updateUI();
+            terminal.innerHTML = 'Stream cleared.';
+        });
+
+        async function connectSerial() {
+            try {
+                const baud = parseInt(document.getElementById('baudRate').value);
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: baud });
+
+                isConnected = true;
+                connectBtn.textContent = 'Disconnect Port';
+                pauseBtn.disabled = false;
+                statusPill.classList.add('connected');
+                statusText.textContent = 'Connected';
+                appendTerminalLine('--- Connected to Serial Port at ' + baud + ' baud ---');
+
+                readSerialLoop();
+            } catch (err) {
+                console.error(err);
+                appendTerminalLine('Connection Error: ' + err.message);
+            }
+        }
+
+        async function disconnectSerial() {
+            if (reader) {
+                await reader.cancel();
+            }
+            if (port) {
+                await port.close();
+            }
+            isConnected = false;
+            connectBtn.textContent = 'Connect Serial Port';
+            pauseBtn.disabled = true;
+            statusPill.classList.remove('connected');
+            statusText.textContent = 'Disconnected';
+            appendTerminalLine('--- Disconnected from Serial Port ---');
+        }
+
+        async function readSerialLoop() {
+            const textDecoder = new TextDecoderStream();
+            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+            reader = textDecoder.readable.getReader();
+
+            let buffer = '';
+
+            try {
+                while (isConnected) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    if (value) {
+                        buffer += value;
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop(); // keep partial trailing line
+
+                        for (const line of lines) {
+                            processLine(line.trim());
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Serial read loop error:', err);
+            } finally {
+                reader.releaseLock();
+            }
+        }
+
+        function processLine(line) {
+            if (!line) return;
+            appendTerminalLine(line);
+
+            if (isPaused) return;
+
+            totalStreamPackets++;
+            document.getElementById('streamCount').textContent = totalStreamPackets;
+
+            // 1. Process Device Updates: [STREAM:DEVICE] {JSON}
+            if (line.startsWith('[STREAM:DEVICE]')) {
+                try {
+                    const jsonStr = line.replace('[STREAM:DEVICE]', '').trim();
+                    const dev = JSON.parse(jsonStr);
+                    devices.set(dev.id, dev);
+                    renderDevicesTable();
+                } catch (e) {}
+            }
+            // 2. Process AP Updates: [STREAM:AP] {JSON}
+            else if (line.startsWith('[STREAM:AP]')) {
+                try {
+                    const jsonStr = line.replace('[STREAM:AP]', '').trim();
+                    const ap = JSON.parse(jsonStr);
+                    accessPoints.set(ap.id, ap);
+                    renderAPTable();
+                } catch (e) {}
+            }
+            // 3. Process Security Alerts: [STREAM:ALERT] {JSON}
+            else if (line.startsWith('[STREAM:ALERT]')) {
+                try {
+                    const jsonStr = line.replace('[STREAM:ALERT]', '').trim();
+                    const alertObj = JSON.parse(jsonStr);
+                    alerts.unshift(alertObj);
+                    if (alerts.length > 20) alerts.pop();
+                    renderAlertsFeed();
+                } catch (e) {}
+            }
+        }
+
+        function renderDevicesTable() {
+            document.getElementById('deviceCount').textContent = devices.size;
+            const tbody = document.getElementById('deviceTableBody');
+            if (devices.size === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-sub);">No devices discovered</td></tr>';
+                return;
+            }
+            let html = '';
+            devices.forEach(dev => {
+                html += `<tr>
+                    <td>${dev.id}</td>
+                    <td>${dev.mac}</td>
+                    <td>${dev.rssi} dBm</td>
+                    <td>${dev.packets}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function renderAPTable() {
+            document.getElementById('apCount').textContent = accessPoints.size;
+            const tbody = document.getElementById('apTableBody');
+            if (accessPoints.size === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-sub);">No Access Points discovered</td></tr>';
+                return;
+            }
+            let html = '';
+            accessPoints.forEach(ap => {
+                html += `<tr>
+                    <td>${ap.id}</td>
+                    <td>${ap.bssid}</td>
+                    <td>${ap.ssid || '<Hidden>'}</td>
+                    <td>${ap.channel}</td>
+                    <td>${ap.rssi} dBm</td>
+                    <td>${ap.beacons}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function renderAlertsFeed() {
+            document.getElementById('alertCount').textContent = alerts.length;
+            const feed = document.getElementById('alertFeed');
+            if (alerts.length === 0) {
+                feed.innerHTML = '<div style="color: var(--text-sub); font-size: 13px; text-align: center; padding: 40px 0;">No security threats detected yet.</div>';
+                return;
+            }
+            let html = '';
+            alerts.forEach(a => {
+                let sevClass = 'sev-low';
+                let badgeClass = 'badge-low';
+                let sevLabel = 'INFO';
+
+                if (a.score >= 80) { sevClass = 'sev-critical'; badgeClass = 'badge-critical'; sevLabel = 'CRITICAL'; }
+                else if (a.score >= 60) { sevClass = 'sev-high'; badgeClass = 'badge-high'; sevLabel = 'HIGH'; }
+                else if (a.score >= 40) { sevClass = 'sev-medium'; badgeClass = 'badge-medium'; sevLabel = 'MEDIUM'; }
+
+                html += `<div class="alert-item ${sevClass}">
+                    <div class="alert-header">
+                        <span class="alert-type">${a.type}</span>
+                        <span class="badge ${badgeClass}">${sevLabel} (${a.score})</span>
+                    </div>
+                    <div class="alert-desc">${a.desc} (BSSID: ${a.bssid})</div>
+                </div>`;
+            });
+            feed.innerHTML = html;
+        }
+
+        async function sendConsoleCmd() {
+            const input = document.getElementById('cmdInput');
+            const cmd = input.value.trim();
+            if (!cmd || !isConnected) return;
+
+            const textEncoder = new TextEncoder();
+            const writer = port.writable.getWriter();
+            await writer.write(textEncoder.encode(cmd + '\n'));
+            writer.releaseLock();
+
+            appendTerminalLine('> ' + cmd);
+            input.value = '';
+        }
+
+        function sendQuickCmd(cmdStr) {
+            document.getElementById('cmdInput').value = cmdStr;
+            sendConsoleCmd();
+        }
+
+        function appendTerminalLine(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            terminal.appendChild(div);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function updateUI() {
+            renderDevicesTable();
+            renderAPTable();
+            renderAlertsFeed();
+        }
+    </script>
+</body>
+</html>

@@ -11,12 +11,20 @@
 #include <chrono>
 #include <iostream>
 
-// Mock millis() and delay()
+// Mock millis(), micros(), and delay()
 inline unsigned long millis() {
     static auto startTime = std::chrono::steady_clock::now();
     auto now = std::chrono::steady_clock::now();
     return static_cast<unsigned long>(
         std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count()
+    );
+}
+
+inline unsigned long micros() {
+    static auto startTime = std::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
+    return static_cast<unsigned long>(
+        std::chrono::duration_cast<std::chrono::microseconds>(now - startTime).count()
     );
 }
 

@@ -2,6 +2,7 @@
 #include "network/device.h"
 #include "network/ap_database.h"
 #include "detection/alert_manager.h"
+#include "storage/logger.h"
 #include "core/config_manager.h"
 #include "core/utils.h"
 #include <string.h>
@@ -22,6 +23,9 @@ namespace SerialCLI {
         Serial.println("  list devices | list dev       - List all tracked wireless devices");
         Serial.println("  list aps                      - List all tracked Access Points");
         Serial.println("  list alerts                   - List all active and logged security alerts");
+        Serial.println("  logs export | logs dump       - Export all persistent LittleFS alerts as JSON");
+        Serial.println("  logs count  | logs info       - Show persistent log storage statistics");
+        Serial.println("  logs clear                    - Clear all stored persistent binary alert logs");
         Serial.println("  whitelist list | wl list      - List whitelisted MAC addresses");
         Serial.println("  whitelist add <MAC>           - Add MAC address to whitelist");
         Serial.println("  whitelist remove <MAC>        - Remove MAC address from whitelist");
@@ -169,6 +173,37 @@ namespace SerialCLI {
         Serial.printf("Unknown config subcommand: '%s'. Usage: config set <param> <value> OR config list\n", subCmd);
     }
 
+    static void handleLogsCommand(const char* subCmd) {
+        if (subCmd == nullptr || strlen(subCmd) == 0 || strcmp(subCmd, "export") == 0 || strcmp(subCmd, "dump") == 0) {
+            IncidentLogger::exportAsJSON();
+            return;
+        }
+
+        if (strcmp(subCmd, "count") == 0 || strcmp(subCmd, "info") == 0 || strcmp(subCmd, "stats") == 0) {
+            uint32_t totalStored = 0;
+            uint32_t sizeBytes = 0;
+            uint32_t dropped = 0;
+            uint32_t failures = 0;
+            IncidentLogger::getStorageStats(totalStored, sizeBytes, dropped, failures);
+
+            Serial.println("\n=== LittleFS Binary Storage Statistics ===");
+            Serial.printf("  Total Stored Alerts  : %lu\n", static_cast<unsigned long>(totalStored));
+            Serial.printf("  Storage File Size    : %lu bytes\n", static_cast<unsigned long>(sizeBytes));
+            Serial.printf("  Dropped Events       : %lu\n", static_cast<unsigned long>(dropped));
+            Serial.printf("  Write Failures       : %lu\n", static_cast<unsigned long>(failures));
+            Serial.println("=========================================\n");
+            return;
+        }
+
+        if (strcmp(subCmd, "clear") == 0) {
+            IncidentLogger::clearLogs();
+            Serial.println("Persistent alert logs cleared successfully.\n");
+            return;
+        }
+
+        Serial.printf("Unknown logs subcommand: '%s'. Usage: logs dump | logs count | logs clear\n", subCmd);
+    }
+
     void processCommand(const char* cmd) {
         if (cmd == nullptr || strlen(cmd) == 0) {
             return;
@@ -208,6 +243,13 @@ namespace SerialCLI {
 
         if (strcmp(trimmed, "list alerts") == 0 || strcmp(trimmed, "alerts") == 0) {
             printAlertList();
+            return;
+        }
+
+        if (strncmp(trimmed, "logs", 4) == 0) {
+            const char* subCmd = trimmed + 4;
+            while (*subCmd == ' ') subCmd++;
+            handleLogsCommand(subCmd);
             return;
         }
 

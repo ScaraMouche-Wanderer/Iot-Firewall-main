@@ -50,7 +50,6 @@ enum class FrameSubtype {
     // Control Frame Subtypes
     PSPoll = 20,
     RTS = 21,
-    Status = 22, // Map CTS/ACK internally if needed
     CTS = 22,
     ACK = 23,
     CFEnd = 24,
@@ -242,6 +241,7 @@ enum class ThreatType : uint8_t {
     None,
     BeaconFlood,
     DeauthenticationAttack,
+    DisassociationFlood,
     ProbeFlood,
     RogueAccessPoint,
     EvilTwin,
@@ -271,8 +271,9 @@ struct ThreatEvent {
     ThreatSeverity severity;
     uint16_t sourceDeviceId;
     ObservationType triggeringObservation;
-    const Observation* observation; // Optional reference link to Observation context
-    char description[64];           // Static memory description (no std::string heap writes)
+    uint8_t bssid[6];               // Inline copy of BSSID (no dangling pointer)
+    bool hasBssid;                   // Whether bssid field is populated
+    char description[64];            // Static memory description (no std::string heap writes)
 
     /**
      * Checks if the threat event has Critical severity.

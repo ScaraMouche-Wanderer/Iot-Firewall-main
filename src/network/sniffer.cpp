@@ -58,6 +58,10 @@ void sniffer(void* buf, wifi_promiscuous_pkt_type_t type) {
 
     // Fast push to FreeRTOS queue without blocking callback context (0 wait time)
     if (observationQueue != nullptr) {
+        // Clear packetInfo pointer before queuing — the PacketInfo is stack-local
+        // and will be invalid after this callback returns (BUG 2 fix)
+        observation.packetInfo = nullptr;
+
         if (xQueueSend(observationQueue, &observation, 0) != pdTRUE) {
             // Queue full (burst deauth flood exceeding buffer capacity)
             SystemHealth::incrementDrops();
@@ -69,17 +73,7 @@ static void processSingleObservation(Observation& observation) {
     // Re-bind MAC pointers to self-contained inline buffers after queue transfer
     observation.fixupPointers();
 
-    // 1. Access Point Database updates on Beacon and Probe Response observations
-    if (observation.type == ObservationType::BeaconSeen || observation.type == ObservationType::ProbeResponseSeen) {
-        int apIdx = AccessPointDatabase::findAP(observation.bssid);
-        if (apIdx == -1) {
-            AccessPointDatabase::addAP(observation);
-        } else {
-            AccessPointDatabase::updateAP(apIdx, observation);
-        }
-    }
-
-    // 2. Device Intelligence Engine updates database based on Observation
+    // 1. Device Intelligence Engine updates database based on Observation
     int index = DeviceDatabase::findDevice(observation.sourceMac);
 
     if (index == -1) {
@@ -88,8 +82,20 @@ static void processSingleObservation(Observation& observation) {
         DeviceDatabase::updateDevice(index, observation);
     }
 
-    // 3. Threat Engine processes Observation
+    // 2. Threat Engine processes Observation BEFORE AP database update
+    //    This ensures the Rogue AP detector can compare the observation's channel
+    //    against the AP's previously recorded channel (BUG 5 fix)
     ThreatEngine::process(observation);
+
+    // 3. Access Point Database updates on Beacon and Probe Response observations
+    if (observation.type == ObservationType::BeaconSeen || observation.type == ObservationType::ProbeResponseSeen) {
+        int apIdx = AccessPointDatabase::findAP(observation.bssid);
+        if (apIdx == -1) {
+            AccessPointDatabase::addAP(observation);
+        } else {
+            AccessPointDatabase::updateAP(apIdx, observation);
+        }
+    }
 
     // 4. Channel Stats Update
     int ch = observation.channel;
@@ -113,4 +119,35 @@ void processSnifferQueue() {
     while (xQueueReceive(observationQueue, &obs, 0) == pdTRUE) {
         processSingleObservation(obs);
     }
+}
+
+#ifndef NATIVE_BUILD
+static TaskHandle_t consumerTaskHandle = nullptr;
+
+static void widsConsumerTask(void* pvParameters) {
+    (void)pvParameters;
+    Observation obs;
+    for (;;) {
+        if (xQueueReceive(observationQueue, &obs, portMAX_DELAY) == pdTRUE) {
+            processSingleObservation(obs);
+        }
+    }
+}
+#endif
+
+void startSnifferConsumerTask() {
+    initSnifferQueue();
+#ifndef NATIVE_BUILD
+    if (consumerTaskHandle == nullptr) {
+        xTaskCreatePinnedToCore(
+            widsConsumerTask,
+            "WIDSConsumer",
+            8192,
+            nullptr,
+            5, // High priority task
+            &consumerTaskHandle,
+            1  // Core 1 (Core 0 runs WiFi promiscuous driver)
+        );
+    }
+#endif
 }

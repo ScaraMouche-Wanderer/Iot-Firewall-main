@@ -49,6 +49,20 @@ namespace ConfigManager {
      * Formats and prints current runtime configuration settings to Serial.
      */
     void printConfig();
+
+    /**
+     * Saves current runtime configuration settings to ESP32 NVS flash storage.
+     *
+     * @return true if write succeeded, false otherwise.
+     */
+    bool saveConfigToNVS();
+
+    /**
+     * Loads saved runtime configuration settings from ESP32 NVS flash storage.
+     *
+     * @return true if load succeeded, false otherwise.
+     */
+    bool loadConfigFromNVS();
 }
 
 #endif // CONFIG_MANAGER_H

@@ -71,7 +71,7 @@ namespace AlertManager {
     void processThreatEvent(const ThreatEvent& event) {
         RecursiveMutexLock lock(alertMutex);
         unsigned long now = millis();
-        const uint8_t* targetBssid = (event.observation != nullptr) ? event.observation->bssid : nullptr;
+        const uint8_t* targetBssid = event.hasBssid ? event.bssid : nullptr;
 
         int idx = findDuplicateAlert(event.type, event.sourceDeviceId, targetBssid);
 
@@ -143,7 +143,8 @@ namespace AlertManager {
         if (targetBssid != nullptr) {
             memcpy(alerts[newIdx].sourceBssid, targetBssid, MAC_LENGTH);
         }
-        strcpy(alerts[newIdx].description, event.description);
+        strncpy(alerts[newIdx].description, event.description, sizeof(alerts[newIdx].description) - 1);
+        alerts[newIdx].description[sizeof(alerts[newIdx].description) - 1] = '\0';
 
         alerts[newIdx].threatScore = calculateThreatScore(alerts[newIdx]);
 

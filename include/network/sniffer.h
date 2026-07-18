@@ -27,4 +27,9 @@ void initSnifferQueue();
  */
 void processSnifferQueue();
 
+/**
+ * Spawns a dedicated FreeRTOS consumer task pinned to Core 1 for queue processing.
+ */
+void startSnifferConsumerTask();
+
 #endif // SNIFFER_H

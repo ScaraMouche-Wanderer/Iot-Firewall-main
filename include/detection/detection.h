@@ -110,6 +110,13 @@ namespace ThreatEngine {
     void emitThreatEvent(const ThreatEvent& event);
 
     /**
+     * Generates a globally unique event ID.
+     *
+     * @return Next unique event ID.
+     */
+    uint64_t nextEventId();
+
+    /**
      * Emits debugging stats for all active registered detectors.
      *
      * @return void

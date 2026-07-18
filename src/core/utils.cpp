@@ -28,6 +28,9 @@ bool parseMacAddress(const char* str, uint8_t* mac) {
     if (sscanf(str, "%x:%x:%x:%x:%x:%x", &values[0], &values[1], &values[2], &values[3], &values[4], &values[5]) == 6 ||
         sscanf(str, "%x-%x-%x-%x-%x-%x", &values[0], &values[1], &values[2], &values[3], &values[4], &values[5]) == 6) {
         for (int i = 0; i < 6; i++) {
+            if (values[i] < 0 || values[i] > 0xFF) {
+                return false; // Out of range for a single byte
+            }
             mac[i] = static_cast<uint8_t>(values[i]);
         }
         return true;

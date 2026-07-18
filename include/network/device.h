@@ -141,11 +141,6 @@ namespace DeviceDatabase {
      * @param cmd Command string to execute.
      */
     void processCLICommand(const char* cmd);
-
-    /**
-     * Reads and processes non-blocking input from Serial stream.
-     */
-    void processSerialCLI();
 }
 
 #endif // DEVICE_H

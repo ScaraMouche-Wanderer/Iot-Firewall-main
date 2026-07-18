@@ -97,7 +97,8 @@ namespace ObservationEngine {
         outObservation.order           = packet.order;
 
         // SSID mappings
-        strcpy(outObservation.ssid, packet.ssid);
+        strncpy(outObservation.ssid, packet.ssid, sizeof(outObservation.ssid) - 1);
+        outObservation.ssid[sizeof(outObservation.ssid) - 1] = '\0';
         outObservation.isHidden = packet.isHidden;
 
         // 5. Link parent PacketInfo debug descriptor

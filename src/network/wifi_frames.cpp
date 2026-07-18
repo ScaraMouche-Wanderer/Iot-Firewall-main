@@ -217,6 +217,7 @@ namespace PacketParser {
         uint8_t flagsByte = payload[1];
         toDS           = (flagsByte & 0x01) != 0;
         fromDS         = (flagsByte & 0x02) != 0;
+        // Bit 2 (0x04) = MoreFragments — not currently exposed but acknowledged
         retry          = (flagsByte & 0x08) != 0;
         powerMgmt      = (flagsByte & 0x10) != 0;
         moreData       = (flagsByte & 0x20) != 0;

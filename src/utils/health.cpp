@@ -1,6 +1,8 @@
 #include "utils/health.h"
+#ifndef NATIVE_BUILD
 #include <esp_wifi.h>
 #include <LittleFS.h>
+#endif
 
 /* =========================================================
    SYSTEM HEALTH & PERFORMANCE TELEMETRY IMPLEMENTATION
@@ -39,6 +41,7 @@ namespace SystemHealth {
         unsigned long min = sec / 60;
         unsigned long hr = min / 60;
 
+#ifndef NATIVE_BUILD
         uint32_t freeHeap = esp_get_free_heap_size();
 
         // Calculate LittleFS usage stats
@@ -48,6 +51,11 @@ namespace SystemHealth {
             totalBytes = LittleFS.totalBytes();
             usedBytes = LittleFS.usedBytes();
         }
+#else
+        uint32_t freeHeap = 250000; // Mock value for native build
+        size_t totalBytes = 0;
+        size_t usedBytes = 0;
+#endif
 
         Serial.println("\n========== WIDS System Health Report ==========");
         Serial.printf("Uptime:      %lu hr, %lu min, %lu sec\n", hr, min % 60, sec % 60);

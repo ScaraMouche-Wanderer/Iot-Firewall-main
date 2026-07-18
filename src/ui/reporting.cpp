@@ -28,6 +28,7 @@ void printAlertReport() {
         switch (alert->threatType) {
             case ThreatType::BeaconFlood:            typeStr = "BeaconFlood"; break;
             case ThreatType::DeauthenticationAttack: typeStr = "DeauthenticationAttack"; break;
+            case ThreatType::DisassociationFlood:    typeStr = "DisassociationFlood"; break;
             case ThreatType::ProbeFlood:             typeStr = "ProbeFlood"; break;
             case ThreatType::RogueAccessPoint:       typeStr = "RogueAccessPoint"; break;
             case ThreatType::EvilTwin:               typeStr = "EvilTwin"; break;

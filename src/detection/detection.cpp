@@ -14,14 +14,22 @@ namespace ThreatEngine {
 
     static RegisteredDetector detectors[MAX_DETECTORS];
     static int detectorCount = 0;
+    static uint64_t globalEventId = 1;
     SemaphoreHandle_t threatMutex = nullptr;
 
     // Instantiate static concrete detectors
     static DeauthDetector deauthDetector;
+    static DisassociationFloodDetector disassocDetector;
     static BeaconFloodDetector beaconDetector;
     static ProbeFloodDetector probeDetector;
     static RogueAPDetector rogueAPDetector;
     static EvilTwinDetector evilTwinDetector;
+    static RSSIAnomalyDetector rssiAnomalyDetector;
+    static ChannelAnomalyDetector channelAnomalyDetector;
+
+    uint64_t nextEventId() {
+        return globalEventId++;
+    }
 
     void initialize() {
         if (threatMutex == nullptr) {
@@ -30,16 +38,20 @@ namespace ThreatEngine {
         RecursiveMutexLock lock(threatMutex);
 
         detectorCount = 0;
+        globalEventId = 1;
         for (int i = 0; i < MAX_DETECTORS; i++) {
             detectors[i] = {nullptr, false};
         }
 
         // Register default detectors
         registerDetector(&deauthDetector);
+        registerDetector(&disassocDetector);
         registerDetector(&beaconDetector);
         registerDetector(&probeDetector);
         registerDetector(&rogueAPDetector);
         registerDetector(&evilTwinDetector);
+        registerDetector(&rssiAnomalyDetector);
+        registerDetector(&channelAnomalyDetector);
     }
 
     bool registerDetector(IThreatDetector* detector) {

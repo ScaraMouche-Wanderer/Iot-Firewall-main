@@ -34,7 +34,7 @@ void setup() {
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous(true));
 
     initChannelManager();
-    initSnifferQueue();
+    startSnifferConsumerTask();
     DeviceDatabase::initialize();
     AccessPointDatabase::initialize();
     ThreatEngine::initialize();

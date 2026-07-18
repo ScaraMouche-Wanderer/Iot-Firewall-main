@@ -54,9 +54,10 @@ namespace CorrelationEngine {
             for (int i = 0; i < count; i++) {
                 Alert& other = alertList[i];
                 if (other.id != alert.id && other.threatType == ThreatType::RogueAccessPoint) {
-                    // Match by duplicate SSIDs or close spatial parameters
-                    if (strcmp(other.description + strlen("Rogue AP channel hopping detected: "), alert.description + strlen("Evil Twin duplicate SSID detected: ")) == 0 ||
-                        compareMacAddress(other.sourceBssid, alert.sourceBssid)) {
+                    // Match by BSSID or by correlated descriptions
+                    if (compareMacAddress(other.sourceBssid, alert.sourceBssid) ||
+                        (strncmp(other.description, "Rogue AP channel hopping detected: ", 35) == 0 &&
+                         strncmp(alert.description, "Evil Twin SSID: ", 16) == 0)) {
                         alert.severity = ThreatSeverity::Critical;
                         alert.threatScore = 100;
                         strcpy(alert.description, "High-Confidence Rogue Evil Twin AP detected");
