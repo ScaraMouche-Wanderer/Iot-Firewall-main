@@ -1,0 +1,24 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+.clang_complete
+.gcc-flags.json
+.project
+.mxproject
+
+# VS Code & IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs and temp files
+bin/
+build/
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+.DS_Store
