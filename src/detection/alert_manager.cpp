@@ -222,6 +222,15 @@ namespace AlertManager {
         return &alerts[index];
     }
 
+    bool getAlertCopy(int index, Alert& outAlert) {
+        RecursiveMutexLock lock(alertMutex);
+        if (index < 0 || index >= alertCount) {
+            return false;
+        }
+        outAlert = alerts[index];
+        return true;
+    }
+
     void clear() {
         RecursiveMutexLock lock(alertMutex);
         alertCount = 0;

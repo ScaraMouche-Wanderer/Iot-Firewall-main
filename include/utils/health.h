@@ -9,9 +9,11 @@
 
 namespace SystemHealth {
 
-    extern uint32_t processedPackets;
-    extern uint32_t channelSwitches;
-    extern uint32_t droppedPackets;
+    // Volatile: accessed from sniffer callback (WiFi task), consumer task, and loop task.
+    // Single-word writes are hardware-atomic on ESP32 Xtensa; volatile prevents caching.
+    extern volatile uint32_t processedPackets;
+    extern volatile uint32_t channelSwitches;
+    extern volatile uint32_t droppedPackets;
 
     /**
      * Initializes health metrics trackers.

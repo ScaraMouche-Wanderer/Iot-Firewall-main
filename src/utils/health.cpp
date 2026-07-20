@@ -10,9 +10,9 @@
 
 namespace SystemHealth {
 
-    uint32_t processedPackets = 0;
-    uint32_t channelSwitches = 0;
-    uint32_t droppedPackets = 0;
+    volatile uint32_t processedPackets = 0;
+    volatile uint32_t channelSwitches = 0;
+    volatile uint32_t droppedPackets = 0;
 
     static unsigned long startTime = 0;
 

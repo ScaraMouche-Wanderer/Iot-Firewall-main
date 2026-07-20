@@ -10,7 +10,8 @@
 ========================================================= */
 
 extern ChannelStats channelStats[CHANNEL_MAX + 1];
-extern int currentChannel;
+// Volatile: written by hopChannel() (loop task), read by sniffer callback (WiFi task).
+extern volatile int currentChannel;
 
 /* =========================================================
    PUBLIC APIs

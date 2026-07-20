@@ -203,6 +203,27 @@ namespace IncidentLogger {
         failures = activeBackend.getFailuresCount();
     }
 
+    static void escapeJSONString(const char* in, char* out, size_t maxLen) {
+        if (!in || !out || maxLen == 0) return;
+        size_t outIdx = 0;
+        for (size_t i = 0; in[i] != '\0' && outIdx < maxLen - 1; i++) {
+            char c = in[i];
+            if (c == '"' || c == '\\') {
+                if (outIdx < maxLen - 2) {
+                    out[outIdx++] = '\\';
+                    out[outIdx++] = c;
+                } else {
+                    break;
+                }
+            } else if (c >= 0x20 && c <= 0x7E) {
+                out[outIdx++] = c;
+            } else {
+                out[outIdx++] = '?';
+            }
+        }
+        out[outIdx] = '\0';
+    }
+
     void exportAsJSON() {
         if (!isInitialized || !JSON_EXPORT_ENABLED) {
             return;
@@ -215,29 +236,14 @@ namespace IncidentLogger {
         for (int i = 0; i < count; i++) {
             Alert alert;
             if (activeBackend.read(i, alert)) {
-                const char* typeStr = "Unknown";
-                switch (alert.threatType) {
-                    case ThreatType::BeaconFlood:            typeStr = "BeaconFlood"; break;
-                    case ThreatType::DeauthenticationAttack: typeStr = "DeauthenticationAttack"; break;
-                    case ThreatType::DisassociationFlood:    typeStr = "DisassociationFlood"; break;
-                    case ThreatType::ProbeFlood:             typeStr = "ProbeFlood"; break;
-                    case ThreatType::RogueAccessPoint:       typeStr = "RogueAccessPoint"; break;
-                    case ThreatType::EvilTwin:               typeStr = "EvilTwin"; break;
-                    case ThreatType::ChannelAnomaly:         typeStr = "ChannelAnomaly"; break;
-                    case ThreatType::RSSIAnomaly:            typeStr = "RSSIAnomaly"; break;
-                    default:                                 break;
-                }
-
-                const char* stateStr = "Unknown";
-                switch (alert.state) {
-                    case AlertState::New:        stateStr = "New"; break;
-                    case AlertState::Active:     stateStr = "Active"; break;
-                    case AlertState::Suppressed: stateStr = "Suppressed"; break;
-                    case AlertState::Cleared:    stateStr = "Cleared"; break;
-                }
+                const char* typeStr = toString(alert.threatType);
+                const char* stateStr = toString(alert.state);
 
                 char bssidStr[18] = "00:00:00:00:00:00";
                 formatMacAddress(alert.sourceBssid, bssidStr);
+
+                char escapedDesc[256];
+                escapeJSONString(alert.description, escapedDesc, sizeof(escapedDesc));
 
                 Serial.printf(
                     "  {\n"
@@ -259,7 +265,7 @@ namespace IncidentLogger {
                     static_cast<unsigned long>(alert.occurrenceCount),
                     alert.sourceDeviceId,
                     bssidStr,
-                    alert.description,
+                    escapedDesc,
                     (i == count - 1) ? "" : ","
                 );
             }

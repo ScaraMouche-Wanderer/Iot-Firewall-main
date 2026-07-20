@@ -69,8 +69,39 @@ inline bool xSemaphoreGive(SemaphoreHandle_t) { return true; }
 inline bool xSemaphoreTakeRecursive(SemaphoreHandle_t, uint32_t) { return true; }
 inline bool xSemaphoreGiveRecursive(SemaphoreHandle_t) { return true; }
 
-inline QueueHandle_t xQueueCreate(size_t, size_t) { return (QueueHandle_t)1; }
-inline int xQueueSend(QueueHandle_t, const void*, uint32_t) { return pdTRUE; }
-inline int xQueueReceive(QueueHandle_t, void*, uint32_t) { return pdFALSE; }
+#include <queue>
+#include <vector>
+
+struct MockQueue {
+    size_t itemSize;
+    size_t maxItems;
+    std::queue<std::vector<uint8_t>> items;
+};
+
+inline QueueHandle_t xQueueCreate(size_t maxItems, size_t itemSize) {
+    MockQueue* q = new MockQueue();
+    q->maxItems = maxItems;
+    q->itemSize = itemSize;
+    return (QueueHandle_t)q;
+}
+
+inline int xQueueSend(QueueHandle_t handle, const void* item, uint32_t) {
+    if (handle == nullptr || item == nullptr) return pdFALSE;
+    MockQueue* q = static_cast<MockQueue*>(handle);
+    if (q->items.size() >= q->maxItems) return pdFALSE;
+    const uint8_t* bytes = static_cast<const uint8_t*>(item);
+    q->items.push(std::vector<uint8_t>(bytes, bytes + q->itemSize));
+    return pdTRUE;
+}
+
+inline int xQueueReceive(QueueHandle_t handle, void* pvBuffer, uint32_t) {
+    if (handle == nullptr || pvBuffer == nullptr) return pdFALSE;
+    MockQueue* q = static_cast<MockQueue*>(handle);
+    if (q->items.empty()) return pdFALSE;
+    const auto& front = q->items.front();
+    memcpy(pvBuffer, front.data(), q->itemSize);
+    q->items.pop();
+    return pdTRUE;
+}
 
 #endif // ARDUINO_MOCK_H

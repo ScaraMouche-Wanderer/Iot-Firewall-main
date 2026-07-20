@@ -59,8 +59,20 @@ namespace AccessPointDatabase {
 
     /**
      * Gets read-only pointer to tracked AP.
+     * Note: Pointers returned may become invalid if cleanup() runs on another task.
+     * Use getAPCopy() for thread-safe access.
      */
     const AccessPoint* getAP(int index);
+
+    /**
+     * Safely copies an AccessPoint structure by index under mutex lock.
+     *
+     * @param index Database index.
+     * @param outAP Destination AccessPoint struct to populate.
+     *
+     * @return true if successful, false if out of bounds.
+     */
+    bool getAPCopy(int index, AccessPoint& outAP);
 
     /**
      * Clears all Access Point entries.

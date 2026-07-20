@@ -17,6 +17,10 @@ constexpr unsigned long BEACON_WINDOW_MS = 1000; // 1-second window
 constexpr uint16_t PROBE_THRESHOLD = 80;
 constexpr unsigned long PROBE_WINDOW_MS = 1000;  // 1-second window
 
+// Disassociation Flood Detector parameters (independent from deauth)
+constexpr uint16_t DISASSOC_THRESHOLD = 50;
+constexpr unsigned long DISASSOC_WINDOW_MS = 1000; // 1-second window
+
 // Threat severity ratios (multipliers of thresholds)
 constexpr float MEDIUM_RATIO = 1.5f;
 constexpr float HIGH_RATIO = 2.0f;

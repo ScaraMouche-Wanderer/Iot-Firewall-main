@@ -73,7 +73,12 @@ static void processSingleObservation(Observation& observation) {
     // Re-bind MAC pointers to self-contained inline buffers after queue transfer
     observation.fixupPointers();
 
-    // 1. Device Intelligence Engine updates database based on Observation
+    // 1. Threat Engine processes Observation BEFORE Device & AP database updates.
+    //    This ensures ChannelAnomalyDetector, RSSIAnomalyDetector, and RogueAPDetector
+    //    can compare the observation against previously established baseline values.
+    ThreatEngine::process(observation);
+
+    // 2. Device Intelligence Engine updates database based on Observation
     int index = DeviceDatabase::findDevice(observation.sourceMac);
 
     if (index == -1) {
@@ -81,11 +86,6 @@ static void processSingleObservation(Observation& observation) {
     } else {
         DeviceDatabase::updateDevice(index, observation);
     }
-
-    // 2. Threat Engine processes Observation BEFORE AP database update
-    //    This ensures the Rogue AP detector can compare the observation's channel
-    //    against the AP's previously recorded channel (BUG 5 fix)
-    ThreatEngine::process(observation);
 
     // 3. Access Point Database updates on Beacon and Probe Response observations
     if (observation.type == ObservationType::BeaconSeen || observation.type == ObservationType::ProbeResponseSeen) {

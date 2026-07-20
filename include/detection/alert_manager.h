@@ -39,8 +39,20 @@ namespace AlertManager {
 
     /**
      * Gets a read-only pointer to an Alert record.
+     * Note: Pointers returned may become invalid if cleanup() runs on another task.
+     * Use getAlertCopy() for thread-safe access.
      */
     const Alert* getAlert(int index);
+
+    /**
+     * Safely copies an Alert structure by index under mutex lock.
+     *
+     * @param index Table index.
+     * @param outAlert Destination Alert struct to populate.
+     *
+     * @return true if successful, false if out of bounds.
+     */
+    bool getAlertCopy(int index, Alert& outAlert);
 
     /**
      * Clears all Alert table logs.

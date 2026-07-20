@@ -420,4 +420,67 @@ struct ChannelStats {
     long rssiSum;
 };
 
+/* =========================================================
+   ENUM TO STRING CONVERSION HELPERS
+========================================================= */
+
+inline const char* toString(ThreatType type) {
+    switch (type) {
+        case ThreatType::BeaconFlood:            return "BeaconFlood";
+        case ThreatType::DeauthenticationAttack: return "DeauthenticationAttack";
+        case ThreatType::DisassociationFlood:    return "DisassociationFlood";
+        case ThreatType::ProbeFlood:             return "ProbeFlood";
+        case ThreatType::RogueAccessPoint:       return "RogueAccessPoint";
+        case ThreatType::EvilTwin:               return "EvilTwin";
+        case ThreatType::ChannelAnomaly:         return "ChannelAnomaly";
+        case ThreatType::RSSIAnomaly:            return "RSSIAnomaly";
+        case ThreatType::None:                   return "None";
+        default:                                 return "Unknown";
+    }
+}
+
+inline const char* toString(ThreatSeverity sev) {
+    switch (sev) {
+        case ThreatSeverity::Info:     return "Info";
+        case ThreatSeverity::Low:      return "Low";
+        case ThreatSeverity::Medium:   return "Medium";
+        case ThreatSeverity::High:     return "High";
+        case ThreatSeverity::Critical: return "Critical";
+        default:                       return "Info";
+    }
+}
+
+inline const char* toString(AlertState state) {
+    switch (state) {
+        case AlertState::New:        return "New";
+        case AlertState::Active:     return "Active";
+        case AlertState::Suppressed: return "Suppressed";
+        case AlertState::Cleared:    return "Cleared";
+        default:                     return "Unknown";
+    }
+}
+
+inline const char* toString(DeviceType type) {
+    switch (type) {
+        case DeviceType::AccessPoint: return "AccessPoint";
+        case DeviceType::Client:      return "Client";
+        case DeviceType::Repeater:    return "Repeater";
+        case DeviceType::IoT:         return "IoT";
+        case DeviceType::Router:      return "Router";
+        case DeviceType::Other:       return "Other";
+        default:                      return "Unknown";
+    }
+}
+
+inline const char* toString(DeviceState state) {
+    switch (state) {
+        case DeviceState::Discovered: return "Discovered";
+        case DeviceState::Active:     return "Active";
+        case DeviceState::Idle:       return "Idle";
+        case DeviceState::Inactive:   return "Inactive";
+        case DeviceState::Lost:       return "Lost";
+        default:                      return "Unknown";
+    }
+}
+
 #endif // TYPES_H

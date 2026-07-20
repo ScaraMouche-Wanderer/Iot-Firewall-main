@@ -40,26 +40,8 @@ namespace LiveStream {
     }
 
     void streamAlert(const Alert& alert) {
-        const char* typeStr = "Unknown";
-        switch (alert.threatType) {
-            case ThreatType::BeaconFlood:            typeStr = "BeaconFlood"; break;
-            case ThreatType::DeauthenticationAttack: typeStr = "DeauthenticationAttack"; break;
-            case ThreatType::DisassociationFlood:    typeStr = "DisassociationFlood"; break;
-            case ThreatType::ProbeFlood:             typeStr = "ProbeFlood"; break;
-            case ThreatType::RogueAccessPoint:       typeStr = "RogueAccessPoint"; break;
-            case ThreatType::EvilTwin:               typeStr = "EvilTwin"; break;
-            case ThreatType::ChannelAnomaly:         typeStr = "ChannelAnomaly"; break;
-            case ThreatType::RSSIAnomaly:            typeStr = "RSSIAnomaly"; break;
-            default:                                 break;
-        }
-
-        const char* stateStr = "Unknown";
-        switch (alert.state) {
-            case AlertState::New:        stateStr = "New"; break;
-            case AlertState::Active:     stateStr = "Active"; break;
-            case AlertState::Suppressed: stateStr = "Suppressed"; break;
-            case AlertState::Cleared:    stateStr = "Cleared"; break;
-        }
+        const char* typeStr = toString(alert.threatType);
+        const char* stateStr = toString(alert.state);
 
         char bssidStr[18] = "00:00:00:00:00:00";
         formatMacAddress(alert.sourceBssid, bssidStr);

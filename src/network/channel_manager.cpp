@@ -6,7 +6,7 @@
 ========================================================= */
 
 ChannelStats channelStats[CHANNEL_MAX + 1];
-int currentChannel = CHANNEL_MIN;
+volatile int currentChannel = CHANNEL_MIN;
 
 void initChannelManager() {
     resetChannelStats();

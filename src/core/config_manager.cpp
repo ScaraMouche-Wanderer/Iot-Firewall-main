@@ -42,9 +42,12 @@ namespace ConfigManager {
         currentConfig.beaconThreshold = BEACON_THRESHOLD;
         currentConfig.probeThreshold  = PROBE_THRESHOLD;
         
+        currentConfig.disassocThreshold = DISASSOC_THRESHOLD;
+
         currentConfig.deauthWindowMs = DEAUTH_WINDOW_MS;
         currentConfig.beaconWindowMs = BEACON_WINDOW_MS;
         currentConfig.probeWindowMs  = PROBE_WINDOW_MS;
+        currentConfig.disassocWindowMs = DISASSOC_WINDOW_MS;
         
         currentConfig.reportingIntervalMs = REPORT_INTERVAL;
         currentConfig.loggingEnabled      = LOGGING_ENABLED;
@@ -103,6 +106,14 @@ namespace ConfigManager {
             }
             currentConfig.probeThreshold = static_cast<uint16_t>(v);
             updated = true;
+        } else if (strcasecmp(param, "disassocThreshold") == 0 || strcasecmp(param, "disassoc_threshold") == 0) {
+            int v = atoi(value);
+            if (v < 1 || v > 10000) {
+                Serial.printf("Invalid value '%s': must be 1-10000.\n", value);
+                return false;
+            }
+            currentConfig.disassocThreshold = static_cast<uint16_t>(v);
+            updated = true;
         }
 
         // Window parameters: validate range [100, 60000] ms
@@ -129,6 +140,14 @@ namespace ConfigManager {
                 return false;
             }
             currentConfig.probeWindowMs = v;
+            updated = true;
+        } else if (strcasecmp(param, "disassocWindowMs") == 0 || strcasecmp(param, "disassoc_window") == 0) {
+            unsigned long v = strtoul(value, nullptr, 10);
+            if (v < 100 || v > 60000) {
+                Serial.printf("Invalid value '%s': must be 100-60000 ms.\n", value);
+                return false;
+            }
+            currentConfig.disassocWindowMs = v;
             updated = true;
         } else if (strcasecmp(param, "reportingIntervalMs") == 0 || strcasecmp(param, "report_interval") == 0 || strcasecmp(param, "reportingInterval") == 0) {
             unsigned long v = strtoul(value, nullptr, 10);
@@ -161,6 +180,8 @@ namespace ConfigManager {
         Serial.printf("  deauthWindowMs       : %lu ms\n", currentConfig.deauthWindowMs);
         Serial.printf("  beaconWindowMs       : %lu ms\n", currentConfig.beaconWindowMs);
         Serial.printf("  probeWindowMs        : %lu ms\n", currentConfig.probeWindowMs);
+        Serial.printf("  disassocThreshold    : %u frames\n", currentConfig.disassocThreshold);
+        Serial.printf("  disassocWindowMs     : %lu ms\n", currentConfig.disassocWindowMs);
         Serial.printf("  reportingIntervalMs  : %lu ms\n", currentConfig.reportingIntervalMs);
         Serial.printf("  loggingEnabled       : %s\n", currentConfig.loggingEnabled ? "true" : "false");
         Serial.printf("  jsonExportEnabled    : %s\n", currentConfig.jsonExportEnabled ? "true" : "false");

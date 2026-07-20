@@ -9,6 +9,8 @@
 #include "storage/logger.h"
 #include "core/config_manager.h"
 #include "core/utils.h"
+#include "network/sniffer.h"
+#include "network/channel_manager.h"
 #include <string.h>
 
 void setUp(void) {
@@ -18,6 +20,7 @@ void setUp(void) {
     ThreatEngine::initialize();
     IncidentLogger::initialize();
     ConfigManager::initialize();
+    initSnifferQueue();
 }
 
 void tearDown(void) {
@@ -425,6 +428,77 @@ void test_mac_hash_lookup_indexing(void) {
 }
 
 /* =========================================================
+   5. PIPELINE INTEGRATION TESTS (REAL CALL ORDER)
+========================================================= */
+
+static void sendMockDataPacket(const uint8_t* srcMac, uint8_t channel, int16_t rssi) {
+    currentChannel = channel;
+    
+    struct {
+        wifi_pkt_rx_ctrl_t rx_ctrl;
+        uint8_t payload[24];
+    } mockPkt;
+    
+    memset(&mockPkt, 0, sizeof(mockPkt));
+    mockPkt.rx_ctrl.rssi = rssi;
+    mockPkt.rx_ctrl.sig_len = 24;
+    
+    // 802.11 Data Frame: Type=Data (0x08), toDS=0, fromDS=0
+    mockPkt.payload[0] = 0x08;
+    mockPkt.payload[1] = 0x00;
+    
+    uint8_t dstMac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    uint8_t bssid[6] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
+    
+    memcpy(mockPkt.payload + 4, dstMac, 6);
+    memcpy(mockPkt.payload + 10, srcMac, 6);
+    memcpy(mockPkt.payload + 16, bssid, 6);
+
+    sniffer(&mockPkt, WIFI_PKT_DATA);
+    processSnifferQueue();
+}
+
+void test_channel_anomaly_pipeline_end_to_end(void) {
+    AlertManager::clear();
+
+    uint8_t srcMac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x99};
+
+    // Seed 6 packets on channel 1 through sniffer pipeline so totalPackets reaches 5 baseline history
+    for (int i = 0; i < 6; i++) {
+        sendMockDataPacket(srcMac, 1, -60);
+    }
+
+    // Next packet on channel 11 must trigger ChannelAnomaly alert in production order
+    sendMockDataPacket(srcMac, 11, -60);
+
+    TEST_ASSERT_GREATER_THAN(0, AlertManager::getAlertCount());
+    const Alert* alert = AlertManager::getAlert(0);
+    TEST_ASSERT_NOT_NULL(alert);
+    TEST_ASSERT_EQUAL(ThreatType::ChannelAnomaly, alert->threatType);
+}
+
+void test_rssi_anomaly_pipeline_end_to_end(void) {
+    AlertManager::clear();
+
+    uint8_t srcMac[6] = {0x77, 0x88, 0x99, 0xAA, 0xBB, 0x99};
+
+    // Seed 11 packets at RSSI -80 dBm so totalPackets reaches 10 baseline history
+    for (int i = 0; i < 11; i++) {
+        sendMockDataPacket(srcMac, 6, -80);
+    }
+
+    TEST_ASSERT_EQUAL(0, AlertManager::getAlertCount());
+
+    // Next packet with RSSI jump to -30 dBm (+50 dBm shift) in production order
+    sendMockDataPacket(srcMac, 6, -30);
+
+    TEST_ASSERT_GREATER_THAN(0, AlertManager::getAlertCount());
+    const Alert* alert = AlertManager::getAlert(0);
+    TEST_ASSERT_NOT_NULL(alert);
+    TEST_ASSERT_EQUAL(ThreatType::RSSIAnomaly, alert->threatType);
+}
+
+/* =========================================================
    UNITY MAIN RUNNER
 ========================================================= */
 
@@ -455,6 +529,10 @@ int main(int argc, char** argv) {
     // 4. Config Persistence & Hash Indexing Tests
     RUN_TEST(test_config_manager_nvs_persistence);
     RUN_TEST(test_mac_hash_lookup_indexing);
+
+    // 5. Pipeline Integration Tests (Production Call Order)
+    RUN_TEST(test_channel_anomaly_pipeline_end_to_end);
+    RUN_TEST(test_rssi_anomaly_pipeline_end_to_end);
 
     return UNITY_END();
 }

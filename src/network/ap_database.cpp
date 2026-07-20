@@ -203,6 +203,15 @@ namespace AccessPointDatabase {
         return &aps[index];
     }
 
+    bool getAPCopy(int index, AccessPoint& outAP) {
+        RecursiveMutexLock lock(apMutex);
+        if (index < 0 || index >= apCount) {
+            return false;
+        }
+        outAP = aps[index];
+        return true;
+    }
+
     void clear() {
         RecursiveMutexLock lock(apMutex);
         apCount = 0;

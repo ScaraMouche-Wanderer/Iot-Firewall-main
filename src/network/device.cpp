@@ -315,6 +315,15 @@ namespace DeviceDatabase {
         return &devices[index];
     }
 
+    bool getDeviceCopy(int index, Device& outDevice) {
+        RecursiveMutexLock lock(deviceMutex);
+        if (index < 0 || index >= deviceCount) {
+            return false;
+        }
+        outDevice = devices[index];
+        return true;
+    }
+
     int getDeviceCount() {
         RecursiveMutexLock lock(deviceMutex);
         return deviceCount;

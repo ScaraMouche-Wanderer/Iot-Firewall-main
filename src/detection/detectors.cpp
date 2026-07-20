@@ -223,8 +223,8 @@ void DisassociationFloodDetector::process(const Observation& observation) {
     unsigned long now = observation.timestamp;
     window.add(now);
 
-    uint16_t threshold = ConfigManager::get().deauthThreshold;
-    unsigned long windowMs = ConfigManager::get().deauthWindowMs;
+    uint16_t threshold = ConfigManager::get().disassocThreshold;
+    unsigned long windowMs = ConfigManager::get().disassocWindowMs;
     uint16_t count = window.countLast(windowMs, now);
 
     if (count >= threshold) {
@@ -272,9 +272,9 @@ void DisassociationFloodDetector::process(const Observation& observation) {
 
 void DisassociationFloodDetector::printDebugStats() const {
     unsigned long now = millis();
-    uint16_t count = window.countLast(ConfigManager::get().deauthWindowMs, now);
+    uint16_t count = window.countLast(ConfigManager::get().disassocWindowMs, now);
     unsigned long ago = (lastAlertTime == 0) ? 0 : (now - lastAlertTime);
-    Serial.printf("[%s]\nWindow Count: %u | Threshold: %u | Last Alert: %lu ms ago\n\n", name(), count, ConfigManager::get().deauthThreshold, ago);
+    Serial.printf("[%s]\nWindow Count: %u | Threshold: %u | Last Alert: %lu ms ago\n\n", name(), count, ConfigManager::get().disassocThreshold, ago);
 }
 
 /* =========================================================
@@ -300,7 +300,7 @@ void RSSIAnomalyDetector::process(const Observation& observation) {
     int rssiDiff = abs(static_cast<int>(observation.rssi) - static_cast<int>(dev->avgRSSI));
     if (rssiDiff >= 25) {
         unsigned long now = observation.timestamp;
-        if (now - lastAlertTime < 5000) {
+        if (lastAlertTime != 0 && now - lastAlertTime < 5000) {
             return;
         }
         lastAlertTime = now;
@@ -352,7 +352,7 @@ void ChannelAnomalyDetector::process(const Observation& observation) {
     // Check if client device shifts operating channel unexpectedly
     if (dev->lastChannel != 0 && observation.channel != dev->lastChannel) {
         unsigned long now = observation.timestamp;
-        if (now - lastAlertTime < 5000) {
+        if (lastAlertTime != 0 && now - lastAlertTime < 5000) {
             return;
         }
         lastAlertTime = now;

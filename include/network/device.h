@@ -72,12 +72,20 @@ namespace DeviceDatabase {
 
     /**
      * Gets a read-only pointer to a device by index.
-     *
-     * @param index Database index.
-     *
-     * @return Const pointer to the Device structure, or nullptr if out of bounds.
+     * Note: Pointers returned may become invalid if cleanup() runs on another task.
+     * Use getDeviceCopy() for thread-safe access.
      */
     const Device* getDevice(int index);
+
+    /**
+     * Safely copies a Device structure by index under mutex lock.
+     *
+     * @param index Database index.
+     * @param outDevice Destination Device struct to populate.
+     *
+     * @return true if successful, false if out of bounds.
+     */
+    bool getDeviceCopy(int index, Device& outDevice);
 
     /**
      * Gets the total number of tracked devices.

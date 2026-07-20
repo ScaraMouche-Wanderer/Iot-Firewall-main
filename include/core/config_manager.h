@@ -14,9 +14,11 @@ struct RuntimeConfig {
     uint16_t deauthThreshold;
     uint16_t beaconThreshold;
     uint16_t probeThreshold;
+    uint16_t disassocThreshold;
     unsigned long deauthWindowMs;
     unsigned long beaconWindowMs;
     unsigned long probeWindowMs;
+    unsigned long disassocWindowMs;
     unsigned long reportingIntervalMs;
     bool loggingEnabled;
     bool jsonExportEnabled;

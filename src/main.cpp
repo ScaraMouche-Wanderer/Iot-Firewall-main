@@ -59,7 +59,9 @@ void setup() {
 }
 
 void loop() {
-    processSnifferQueue();
+    // NOTE: Observation queue is drained exclusively by widsConsumerTask (Core 1).
+    // Do NOT call processSnifferQueue() here — dual consumers cause a race condition.
+
     SerialCLI::process();
     DeviceDatabase::cleanup();
     AccessPointDatabase::cleanup();

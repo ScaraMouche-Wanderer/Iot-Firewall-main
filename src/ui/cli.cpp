@@ -73,7 +73,7 @@ namespace SerialCLI {
                 default:                      stateStr = "Unknown"; break;
             }
 
-            char flagStr[16] = "";
+            char flagStr[32] = "";
             if (dev->flags & DeviceFlags::WHITELISTED) strcat(flagStr, "WL ");
             if (dev->flags & DeviceFlags::BLACKLISTED) strcat(flagStr, "BL ");
             if (dev->flags & DeviceFlags::KNOWN_AP)    strcat(flagStr, "AP ");

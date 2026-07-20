@@ -25,7 +25,7 @@ void RogueAPDetector::process(const Observation& observation) {
         int diff = abs(static_cast<int>(observation.channel) - static_cast<int>(ap->channel));
         if (diff >= CHANNEL_DEVIATION_LIMIT) {
             // Avoid duplicate alerts within 5 seconds
-            if (now - lastAlertTime < 5000) {
+            if (lastAlertTime != 0 && now - lastAlertTime < 5000) {
                 return;
             }
             lastAlertTime = now;
@@ -98,7 +98,7 @@ void EvilTwinDetector::process(const Observation& observation) {
 
             if (overlappingCoverage || conflictingChannel) {
                 // Avoid duplicate alerts within 5 seconds
-                if (now - lastAlertTime < 5000) {
+                if (lastAlertTime != 0 && now - lastAlertTime < 5000) {
                     return;
                 }
                 lastAlertTime = now;
