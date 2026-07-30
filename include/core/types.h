@@ -247,6 +247,11 @@ enum class ThreatType : uint8_t {
     EvilTwin,
     ChannelAnomaly,
     RSSIAnomaly,
+    PolicyViolation,
+    SequenceNumberAnomaly,
+    KarmaAttack,
+    EapolHarvesting,
+    RFJamming,
     Unknown
 };
 
@@ -434,6 +439,11 @@ inline const char* toString(ThreatType type) {
         case ThreatType::EvilTwin:               return "EvilTwin";
         case ThreatType::ChannelAnomaly:         return "ChannelAnomaly";
         case ThreatType::RSSIAnomaly:            return "RSSIAnomaly";
+        case ThreatType::PolicyViolation:        return "PolicyViolation";
+        case ThreatType::SequenceNumberAnomaly:  return "SequenceNumberAnomaly";
+        case ThreatType::KarmaAttack:            return "KarmaAttack";
+        case ThreatType::EapolHarvesting:        return "EapolHarvesting";
+        case ThreatType::RFJamming:              return "RFJamming";
         case ThreatType::None:                   return "None";
         default:                                 return "Unknown";
     }
