@@ -6,7 +6,7 @@
 ========================================================= */
 
 constexpr char PROJECT_NAME[] = "ESP32 IoT Firewall";
-constexpr char VERSION[] = "0.3.0";
+constexpr char VERSION[] = "0.4.0";
 constexpr char BUILD_DATE[] = __DATE__;
 constexpr char BUILD_TIME[] = __TIME__;
 
