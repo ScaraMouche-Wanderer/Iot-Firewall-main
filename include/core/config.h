@@ -12,6 +12,8 @@ constexpr unsigned long HOP_INTERVAL = 1000;
 constexpr unsigned long DEVICE_TIMEOUT = 30000;
 constexpr unsigned long REPORT_INTERVAL = 5000;
 constexpr int MAX_WHITELIST = 20;
+constexpr int MAX_BLACKLIST = 20;
+
 
 // Device state machine thresholds (in milliseconds)
 constexpr unsigned long ACTIVE_THRESHOLD_MS = 2000;
