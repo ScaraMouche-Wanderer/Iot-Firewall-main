@@ -59,4 +59,26 @@ constexpr bool JSON_EXPORT_ENABLED = true;
 constexpr unsigned long MAX_LOG_SIZE_BYTES = 10240; // 10 KB file limit
 constexpr int MAX_LOG_FILES = 3;
 
+// Hardware Actuator & Alerting parameters
+constexpr uint8_t DEFAULT_LED_PIN = 2;              // Standard onboard LED on ESP32 DevKit
+constexpr uint8_t DEFAULT_BUZZER_PIN = 4;           // Optional piezo buzzer
+constexpr uint8_t DEFAULT_RELAY_PIN = 5;            // Optional quarantine / alarm relay
+constexpr bool DEFAULT_HARDWARE_ALERTS_ENABLED = true;
+constexpr unsigned long HARDWARE_ALERT_HOLD_MS = 5000; // Keep alerting for at least 5s
+
+// IoT Zero-Trust Perimeter Policy parameters
+constexpr bool DEFAULT_STRICT_FIREWALL_POLICY = false; // Flag unknown transmitting stations
+constexpr unsigned long POLICY_ALERT_COOLDOWN_MS = 10000;
+
+#include "core/config.h"
+
+// Active Defense & Attack Blocking parameters
+constexpr bool DEFAULT_ACTIVE_DEFENSE_ENABLED = true;
+constexpr uint8_t DEFENSIVE_BURST_COUNT = 3;
+
+// I2C OLED Display parameters (SSD1306 / SH1106 128x64)
+constexpr uint8_t OLED_I2C_ADDR = 0x3C;
+constexpr uint8_t OLED_SDA_PIN = 21;
+constexpr uint8_t OLED_SCL_PIN = 22;
+
 #endif // DETECTION_CONFIG_H
