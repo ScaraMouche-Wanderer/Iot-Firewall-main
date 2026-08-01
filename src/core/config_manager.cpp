@@ -54,6 +54,13 @@ namespace ConfigManager {
         currentConfig.jsonExportEnabled   = JSON_EXPORT_ENABLED;
         currentConfig.debugStatsEnabled   = ENABLE_DETECTION_DEBUG;
 
+        currentConfig.ledPin               = DEFAULT_LED_PIN;
+        currentConfig.buzzerPin            = DEFAULT_BUZZER_PIN;
+        currentConfig.relayPin             = DEFAULT_RELAY_PIN;
+        currentConfig.hardwareAlertsEnabled = DEFAULT_HARDWARE_ALERTS_ENABLED;
+        currentConfig.strictFirewallPolicy = DEFAULT_STRICT_FIREWALL_POLICY;
+        currentConfig.activeDefenseEnabled = DEFAULT_ACTIVE_DEFENSE_ENABLED;
+
         // Restore saved settings from NVS flash if present
         loadConfigFromNVS();
     }
@@ -163,6 +170,36 @@ namespace ConfigManager {
             updated = parseBool(value, currentConfig.jsonExportEnabled);
         } else if (strcasecmp(param, "debugStatsEnabled") == 0 || strcasecmp(param, "debug") == 0 || strcasecmp(param, "debug_stats") == 0) {
             updated = parseBool(value, currentConfig.debugStatsEnabled);
+        } else if (strcasecmp(param, "ledPin") == 0 || strcasecmp(param, "led_pin") == 0) {
+            int v = atoi(value);
+            if (v < 0 || v > 39) {
+                Serial.printf("Invalid GPIO pin '%s': must be 0-39.\n", value);
+                return false;
+            }
+            currentConfig.ledPin = static_cast<uint8_t>(v);
+            updated = true;
+        } else if (strcasecmp(param, "buzzerPin") == 0 || strcasecmp(param, "buzzer_pin") == 0) {
+            int v = atoi(value);
+            if (v < 0 || v > 39) {
+                Serial.printf("Invalid GPIO pin '%s': must be 0-39.\n", value);
+                return false;
+            }
+            currentConfig.buzzerPin = static_cast<uint8_t>(v);
+            updated = true;
+        } else if (strcasecmp(param, "relayPin") == 0 || strcasecmp(param, "relay_pin") == 0) {
+            int v = atoi(value);
+            if (v < 0 || v > 39) {
+                Serial.printf("Invalid GPIO pin '%s': must be 0-39.\n", value);
+                return false;
+            }
+            currentConfig.relayPin = static_cast<uint8_t>(v);
+            updated = true;
+        } else if (strcasecmp(param, "hardwareAlerts") == 0 || strcasecmp(param, "hardware_alerts") == 0 || strcasecmp(param, "hwAlerts") == 0) {
+            updated = parseBool(value, currentConfig.hardwareAlertsEnabled);
+        } else if (strcasecmp(param, "strictPolicy") == 0 || strcasecmp(param, "strict_policy") == 0 || strcasecmp(param, "strictFirewallPolicy") == 0) {
+            updated = parseBool(value, currentConfig.strictFirewallPolicy);
+        } else if (strcasecmp(param, "activeDefense") == 0 || strcasecmp(param, "active_defense") == 0 || strcasecmp(param, "defense") == 0) {
+            updated = parseBool(value, currentConfig.activeDefenseEnabled);
         }
 
         if (updated) {
@@ -186,6 +223,12 @@ namespace ConfigManager {
         Serial.printf("  loggingEnabled       : %s\n", currentConfig.loggingEnabled ? "true" : "false");
         Serial.printf("  jsonExportEnabled    : %s\n", currentConfig.jsonExportEnabled ? "true" : "false");
         Serial.printf("  debugStatsEnabled    : %s\n", currentConfig.debugStatsEnabled ? "true" : "false");
+        Serial.printf("  ledPin (Status LED)  : GPIO %u\n", currentConfig.ledPin);
+        Serial.printf("  buzzerPin (Alarm)    : GPIO %u\n", currentConfig.buzzerPin);
+        Serial.printf("  relayPin (Cutoff)    : GPIO %u\n", currentConfig.relayPin);
+        Serial.printf("  hardwareAlerts       : %s\n", currentConfig.hardwareAlertsEnabled ? "enabled" : "disabled");
+        Serial.printf("  strictFirewallPolicy : %s\n", currentConfig.strictFirewallPolicy ? "enabled (Zero-Trust)" : "disabled");
+        Serial.printf("  activeDefense        : %s\n", currentConfig.activeDefenseEnabled ? "ARMED (Active 802.11 Blocking)" : "PASSIVE (Log Only)");
         Serial.println("=====================================\n");
     }
 }
