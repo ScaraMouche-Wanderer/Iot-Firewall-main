@@ -23,6 +23,12 @@ struct RuntimeConfig {
     bool loggingEnabled;
     bool jsonExportEnabled;
     bool debugStatsEnabled;
+    uint8_t ledPin;
+    uint8_t buzzerPin;
+    uint8_t relayPin;
+    bool hardwareAlertsEnabled;
+    bool strictFirewallPolicy;
+    bool activeDefenseEnabled;
 };
 
 namespace ConfigManager {
