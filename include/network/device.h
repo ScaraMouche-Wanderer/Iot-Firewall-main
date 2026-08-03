@@ -15,6 +15,8 @@ namespace DeviceDatabase {
     extern int deviceCount;
     extern uint8_t whitelist[MAX_WHITELIST][MAC_LENGTH];
     extern int whitelistCount;
+    extern uint8_t blacklist[MAX_BLACKLIST][MAC_LENGTH];
+    extern int blacklistCount;
     extern SemaphoreHandle_t deviceMutex;
 
     /**
@@ -93,6 +95,8 @@ namespace DeviceDatabase {
      * @return Current device count.
      */
     int getDeviceCount();
+    int getWhitelistCount();
+    int getBlacklistCount();
 
     /**
      * Clears all database records.
@@ -142,6 +146,41 @@ namespace DeviceDatabase {
      * Saves current whitelist entries to ESP32 NVS Preferences.
      */
     void saveWhitelistToNVS();
+
+    /**
+     * Checks if a MAC address is in the active blacklist.
+     */
+    bool isBlacklisted(const uint8_t* mac);
+
+    /**
+     * Adds a MAC address to the blacklist and persists it.
+     */
+    bool addToBlacklist(const uint8_t* mac);
+
+    /**
+     * Removes a MAC address from the blacklist and persists the update.
+     */
+    bool removeFromBlacklist(const uint8_t* mac);
+
+    /**
+     * Clears all MAC addresses from the blacklist.
+     */
+    void clearBlacklist();
+
+    /**
+     * Loads saved blacklist entries from ESP32 NVS Preferences.
+     */
+    void loadBlacklistFromNVS();
+
+    /**
+     * Saves current blacklist entries to ESP32 NVS Preferences.
+     */
+    void saveBlacklistToNVS();
+
+    /**
+     * Processes a blacklist CLI command string.
+     */
+    void processBlacklistCLICommand(const char* cmd);
 
     /**
      * Processes a single CLI command string.
