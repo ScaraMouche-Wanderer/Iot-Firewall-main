@@ -1,4 +1,5 @@
 #include "network/device.h"
+#include "network/oui_database.h"
 #include "ui/live_stream.h"
 #include "core/utils.h"
 #ifndef NATIVE_BUILD
@@ -17,6 +18,8 @@ namespace DeviceDatabase {
     int deviceCount = 0;
     uint8_t whitelist[MAX_WHITELIST][MAC_LENGTH];
     int whitelistCount = 0;
+    uint8_t blacklist[MAX_BLACKLIST][MAC_LENGTH];
+    int blacklistCount = 0;
     SemaphoreHandle_t deviceMutex = nullptr;
 
     static uint16_t nextDeviceId = 1;
@@ -133,7 +136,11 @@ namespace DeviceDatabase {
         devices[newIndex].channelChanges = 0;
 
         // Init scores
-        devices[newIndex].trustScore = 0;
+        if (devices[newIndex].flags & DeviceFlags::WHITELISTED) {
+            devices[newIndex].trustScore = 100;
+        } else {
+            devices[newIndex].trustScore = 50;
+        }
         devices[newIndex].threatScore = 0;
 
         // TODO: Trigger Event Engine Hook: EventType::DeviceCreated (e.g. eventEngine.publish(DeviceCreated, devices[newIndex]))
@@ -261,6 +268,32 @@ namespace DeviceDatabase {
             dev.classificationConfidence = 0;
         }
 
+        // 5. Dynamic Device Trust Score Computation (0-100)
+        if (dev.flags & DeviceFlags::WHITELISTED) {
+            dev.trustScore = 100;
+        } else {
+            int score = 50;
+            VendorInfo v = OUIDatabase::lookup(dev.mac);
+            if (v.vendorName != nullptr && strcmp(v.vendorName, "Unknown") != 0 && !v.isRandomized) {
+                score += 15;
+            }
+            if (dev.dataFrames > 5) {
+                score += 10;
+            }
+            if (dev.rssiSamples > 10 && (dev.maxRSSI - dev.minRSSI) < 25) {
+                score += 10;
+            }
+            if (dev.deauthenticationFrames > 0 || dev.disassociationFrames > 0) {
+                score -= 30;
+            }
+            if (dev.channelChanges > 3) {
+                score -= 15;
+            }
+            if (score < 0) score = 0;
+            if (score > 100) score = 100;
+            dev.trustScore = score;
+        }
+
         LiveStream::streamDeviceUpdate(dev);
     }
 
@@ -329,10 +362,22 @@ namespace DeviceDatabase {
         return deviceCount;
     }
 
+    int getWhitelistCount() {
+        RecursiveMutexLock lock(deviceMutex);
+        return whitelistCount;
+    }
+
+    int getBlacklistCount() {
+        RecursiveMutexLock lock(deviceMutex);
+        return blacklistCount;
+    }
+
     void clear() {
         RecursiveMutexLock lock(deviceMutex);
         deviceCount = 0;
         rebuildDeviceHashTable();
+        loadWhitelistFromNVS();
+        loadBlacklistFromNVS();
     }
 
     void loadWhitelistFromNVS() {
@@ -455,6 +500,171 @@ namespace DeviceDatabase {
         }
         Serial.println("Whitelist cleared.");
         saveWhitelistToNVS();
+    }
+
+    /* =========================================================
+       NVS BLACKLIST SUBSYSTEM
+    ========================================================= */
+
+    void loadBlacklistFromNVS() {
+        RecursiveMutexLock lock(deviceMutex);
+        Preferences prefs;
+        if (!prefs.begin("wids_bl", true)) {
+            return;
+        }
+        int loadedCount = prefs.getInt("count", 0);
+        if (loadedCount > 0 && loadedCount <= MAX_BLACKLIST) {
+            size_t bytesRead = prefs.getBytes("macs", blacklist, loadedCount * MAC_LENGTH);
+            if (bytesRead == static_cast<size_t>(loadedCount * MAC_LENGTH)) {
+                blacklistCount = loadedCount;
+                Serial.printf("[NVS] Loaded %d blacklisted device(s) from persistent storage.\n", blacklistCount);
+            } else {
+                blacklistCount = 0;
+            }
+        } else {
+            blacklistCount = 0;
+        }
+        prefs.end();
+    }
+
+    void saveBlacklistToNVS() {
+        RecursiveMutexLock lock(deviceMutex);
+        Preferences prefs;
+        if (!prefs.begin("wids_bl", false)) {
+            Serial.println("[NVS] Error opening NVS namespace 'wids_bl' for writing.");
+            return;
+        }
+        prefs.putInt("count", blacklistCount);
+        if (blacklistCount > 0) {
+            prefs.putBytes("macs", blacklist, blacklistCount * MAC_LENGTH);
+        } else {
+            prefs.remove("macs");
+        }
+        prefs.end();
+    }
+
+    bool isBlacklisted(const uint8_t* mac) {
+        RecursiveMutexLock lock(deviceMutex);
+        if (mac == nullptr) return false;
+        for (int i = 0; i < blacklistCount; i++) {
+            if (compareMacAddress(blacklist[i], mac)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool addToBlacklist(const uint8_t* mac) {
+        RecursiveMutexLock lock(deviceMutex);
+        if (mac == nullptr) return false;
+        if (isBlacklisted(mac)) {
+            return true;
+        }
+        if (blacklistCount >= MAX_BLACKLIST) {
+            Serial.printf("Cannot add MAC: Blacklist full (%d/%d).\n", blacklistCount, MAX_BLACKLIST);
+            return false;
+        }
+        memcpy(blacklist[blacklistCount], mac, MAC_LENGTH);
+        blacklistCount++;
+
+        int idx = findDevice(mac);
+        if (idx >= 0) {
+            devices[idx].flags |= DeviceFlags::BLACKLISTED;
+        }
+
+        char macStr[18];
+        formatMacAddress(mac, macStr);
+        Serial.printf("Added [%s] to blacklist (%d/%d).\n", macStr, blacklistCount, MAX_BLACKLIST);
+
+        saveBlacklistToNVS();
+        return true;
+    }
+
+    bool removeFromBlacklist(const uint8_t* mac) {
+        RecursiveMutexLock lock(deviceMutex);
+        if (mac == nullptr) return false;
+        int foundIdx = -1;
+        for (int i = 0; i < blacklistCount; i++) {
+            if (compareMacAddress(blacklist[i], mac)) {
+                foundIdx = i;
+                break;
+            }
+        }
+        if (foundIdx < 0) return false;
+
+        for (int i = foundIdx; i < blacklistCount - 1; i++) {
+            memcpy(blacklist[i], blacklist[i + 1], MAC_LENGTH);
+        }
+        blacklistCount--;
+
+        int idx = findDevice(mac);
+        if (idx >= 0) {
+            devices[idx].flags &= ~DeviceFlags::BLACKLISTED;
+        }
+
+        saveBlacklistToNVS();
+        return true;
+    }
+
+    void clearBlacklist() {
+        RecursiveMutexLock lock(deviceMutex);
+        blacklistCount = 0;
+        for (int i = 0; i < deviceCount; i++) {
+            devices[i].flags &= ~DeviceFlags::BLACKLISTED;
+        }
+        saveBlacklistToNVS();
+        Serial.println("Blacklist cleared.");
+    }
+
+    void processBlacklistCLICommand(const char* cmd) {
+        if (cmd == nullptr) return;
+        const char* subCmd = cmd;
+        if (strncmp(cmd, "blacklist", 9) == 0) subCmd = cmd + 9;
+        else if (strncmp(cmd, "bl", 2) == 0) subCmd = cmd + 2;
+        while (*subCmd == ' ') subCmd++;
+
+        if (strlen(subCmd) == 0 || strcmp(subCmd, "list") == 0) {
+            Serial.printf("\n=== Active Blacklist Devices (%d/%d) ===\n", blacklistCount, MAX_BLACKLIST);
+            for (int i = 0; i < blacklistCount; i++) {
+                char macStr[18];
+                formatMacAddress(blacklist[i], macStr);
+                Serial.printf("  %d. %s [BLOCKED]\n", i + 1, macStr);
+            }
+            if (blacklistCount == 0) Serial.println("  (No blacklisted devices)");
+            Serial.println();
+            return;
+        }
+
+        if (strncmp(subCmd, "add ", 4) == 0) {
+            const char* macArg = subCmd + 4;
+            while (*macArg == ' ') macArg++;
+            uint8_t parsedMac[6];
+            if (parseMacAddress(macArg, parsedMac)) {
+                addToBlacklist(parsedMac);
+            } else {
+                Serial.printf("Invalid MAC format '%s'. Use XX:XX:XX:XX:XX:XX\n", macArg);
+            }
+            return;
+        }
+
+        if (strncmp(subCmd, "remove ", 7) == 0) {
+            const char* macArg = subCmd + 7;
+            while (*macArg == ' ') macArg++;
+            uint8_t parsedMac[6];
+            if (parseMacAddress(macArg, parsedMac)) {
+                removeFromBlacklist(parsedMac);
+            } else {
+                Serial.printf("Invalid MAC format '%s'. Use XX:XX:XX:XX:XX:XX\n", macArg);
+            }
+            return;
+        }
+
+        if (strcmp(subCmd, "clear") == 0) {
+            clearBlacklist();
+            return;
+        }
+
+        Serial.printf("Unknown blacklist subcommand: '%s'. Usage: blacklist list | add <MAC> | remove <MAC> | clear\n", subCmd);
     }
 
     void processCLICommand(const char* cmd) {
