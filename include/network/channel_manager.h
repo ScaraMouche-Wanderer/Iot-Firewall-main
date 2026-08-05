@@ -26,6 +26,7 @@ void initChannelManager();
 
 /**
  * Performs channel hopping by switching the radio to the next channel in sequence.
+ * Skipped if channel is currently locked for active defense.
  *
  * @return void
  */
@@ -37,5 +38,39 @@ void hopChannel();
  * @return void
  */
 void resetChannelStats();
+
+/**
+ * Locks the radio on a specific channel.
+ *
+ * @param channel Target 802.11 channel (1-13)
+ * @param durationMs Duration in milliseconds (0 = permanent until unlockChannel)
+ * @return bool True if channel valid and locked
+ */
+bool lockChannel(int channel, unsigned long durationMs = 0);
+
+/**
+ * Releases channel lock and resumes regular channel hopping.
+ */
+void unlockChannel();
+
+/**
+ * Checks if channel is currently locked (evaluating auto-lock expiration).
+ *
+ * @return bool True if locked
+ */
+bool isChannelLocked();
+
+/**
+ * Returns remaining lock time in milliseconds (0 if permanent or unlocked).
+ */
+unsigned long getChannelLockRemaining();
+
+/**
+ * Sets the radio channel immediately.
+ *
+ * @param channel Target channel
+ * @return bool True if valid
+ */
+bool setChannel(int channel);
 
 #endif // CHANNEL_MANAGER_H
