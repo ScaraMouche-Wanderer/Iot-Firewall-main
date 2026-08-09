@@ -1,6 +1,10 @@
 #include "detection/detection.h"
 #include "detection/detectors.h"
 #include "detection/ap_detectors.h"
+#include "detection/policy_detector.h"
+#include "detection/seq_detector.h"
+#include "detection/eapol_detector.h"
+#include "detection/retry_detector.h"
 #include "detection/alert_manager.h"
 #include "core/detection_config.h"
 #include "core/utils.h"
@@ -26,6 +30,11 @@ namespace ThreatEngine {
     static EvilTwinDetector evilTwinDetector;
     static RSSIAnomalyDetector rssiAnomalyDetector;
     static ChannelAnomalyDetector channelAnomalyDetector;
+    static PolicyViolationDetector policyDetector;
+    static SeqAnomalyDetector seqAnomalyDetector;
+    static KarmaDetector karmaDetector;
+    static EapolHarvestingDetector eapolDetector;
+    static RetryRateDetector retryRateDetector;
 
     uint64_t nextEventId() {
         return globalEventId++;
@@ -52,6 +61,11 @@ namespace ThreatEngine {
         registerDetector(&evilTwinDetector);
         registerDetector(&rssiAnomalyDetector);
         registerDetector(&channelAnomalyDetector);
+        registerDetector(&policyDetector);
+        registerDetector(&seqAnomalyDetector);
+        registerDetector(&karmaDetector);
+        registerDetector(&eapolDetector);
+        registerDetector(&retryRateDetector);
     }
 
     bool registerDetector(IThreatDetector* detector) {
