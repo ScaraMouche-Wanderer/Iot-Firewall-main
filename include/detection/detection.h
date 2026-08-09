@@ -46,7 +46,7 @@ public:
 
 namespace ThreatEngine {
 
-    constexpr int MAX_DETECTORS = 10;
+    constexpr int MAX_DETECTORS = 16;
     extern SemaphoreHandle_t threatMutex;
 
     /**
