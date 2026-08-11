@@ -21,7 +21,7 @@ void DeauthDetector::process(const Observation& observation) {
 
     if (count >= threshold) {
         // Avoid duplicate alerts within the same window duration
-        if (now - lastAlertTime < windowMs) {
+        if (lastAlertTime != 0 && now - lastAlertTime < windowMs) {
             return;
         }
         lastAlertTime = now;
@@ -91,7 +91,7 @@ void BeaconFloodDetector::process(const Observation& observation) {
 
     if (count >= threshold) {
         // Avoid duplicate alerts within the same window duration
-        if (now - lastAlertTime < windowMs) {
+        if (lastAlertTime != 0 && now - lastAlertTime < windowMs) {
             return;
         }
         lastAlertTime = now;
@@ -160,7 +160,7 @@ void ProbeFloodDetector::process(const Observation& observation) {
 
     if (count >= threshold) {
         // Avoid duplicate alerts within the same window duration
-        if (now - lastAlertTime < windowMs) {
+        if (lastAlertTime != 0 && now - lastAlertTime < windowMs) {
             return;
         }
         lastAlertTime = now;
@@ -228,7 +228,7 @@ void DisassociationFloodDetector::process(const Observation& observation) {
     uint16_t count = window.countLast(windowMs, now);
 
     if (count >= threshold) {
-        if (now - lastAlertTime < windowMs) {
+        if (lastAlertTime != 0 && now - lastAlertTime < windowMs) {
             return;
         }
         lastAlertTime = now;
