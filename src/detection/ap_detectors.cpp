@@ -136,3 +136,113 @@ void EvilTwinDetector::printDebugStats() const {
         Serial.printf("[%s] Last Alert: %lu ms ago\n\n", name(), ago);
     }
 }
+
+/* =========================================================
+   KARMA / MANA MULTI-SSID ROGUE AP DETECTOR
+========================================================= */
+
+KarmaDetector::KarmaDetector() : lastAlertTime(0) {
+    reset();
+}
+
+void KarmaDetector::reset() {
+    for (size_t i = 0; i < MAX_KARMA_TRACKERS; ++i) {
+        memset(trackers[i].bssid, 0, 6);
+        for (int s = 0; s < 3; ++s) {
+            memset(trackers[i].ssidHistory[s], 0, sizeof(trackers[i].ssidHistory[s]));
+        }
+        trackers[i].distinctCount = 0;
+        trackers[i].lastSeen = 0;
+        trackers[i].active = false;
+    }
+    lastAlertTime = 0;
+}
+
+void KarmaDetector::process(const Observation& observation) {
+    if (observation.type != ObservationType::BeaconSeen &&
+        observation.type != ObservationType::ProbeResponseSeen) {
+        return;
+    }
+
+    if (!observation.bssid || observation.isHidden || strlen(observation.ssid) == 0) {
+        return;
+    }
+
+    unsigned long now = observation.timestamp;
+    int targetIdx = -1;
+    unsigned long oldestTime = 0xFFFFFFFF;
+    int oldestIdx = 0;
+
+    for (size_t i = 0; i < MAX_KARMA_TRACKERS; ++i) {
+        if (trackers[i].active && compareMacAddress(trackers[i].bssid, observation.bssid)) {
+            targetIdx = static_cast<int>(i);
+            break;
+        }
+        if (!trackers[i].active) {
+            oldestIdx = static_cast<int>(i);
+            oldestTime = 0;
+        } else if (trackers[i].lastSeen < oldestTime) {
+            oldestTime = trackers[i].lastSeen;
+            oldestIdx = static_cast<int>(i);
+        }
+    }
+
+    if (targetIdx == -1) {
+        targetIdx = oldestIdx;
+        memcpy(trackers[targetIdx].bssid, observation.bssid, 6);
+        for (int s = 0; s < 3; ++s) {
+            memset(trackers[targetIdx].ssidHistory[s], 0, sizeof(trackers[targetIdx].ssidHistory[s]));
+        }
+        strncpy(trackers[targetIdx].ssidHistory[0], observation.ssid, 32);
+        trackers[targetIdx].distinctCount = 1;
+        trackers[targetIdx].lastSeen = now;
+        trackers[targetIdx].active = true;
+        return;
+    }
+
+    KarmaTracker& trk = trackers[targetIdx];
+
+    if (now >= trk.lastSeen && (now - trk.lastSeen > 20000)) {
+        trk.distinctCount = 0;
+    }
+    trk.lastSeen = now;
+
+    bool alreadySeen = false;
+    for (uint8_t s = 0; s < trk.distinctCount && s < 3; ++s) {
+        if (strncmp(trk.ssidHistory[s], observation.ssid, 32) == 0) {
+            alreadySeen = true;
+            break;
+        }
+    }
+
+    if (!alreadySeen && trk.distinctCount < 3) {
+        strncpy(trk.ssidHistory[trk.distinctCount], observation.ssid, 32);
+        trk.distinctCount++;
+
+        if (trk.distinctCount >= 3 && (lastAlertTime == 0 || now - lastAlertTime > 5000)) {
+            lastAlertTime = now;
+
+            ThreatEvent event;
+            memset(&event, 0, sizeof(ThreatEvent));
+            event.id = ThreatEngine::nextEventId();
+            event.timestamp = now;
+            event.type = ThreatType::KarmaAttack;
+            event.severity = ThreatSeverity::Critical;
+            event.triggeringObservation = observation.type;
+
+            memcpy(event.bssid, observation.bssid, 6);
+            event.hasBssid = true;
+
+            char macStr[18];
+            formatMacAddress(observation.bssid, macStr);
+            snprintf(event.description, sizeof(event.description),
+                     "Karma rogue AP [%s]: multi-SSID", macStr);
+
+            ThreatEngine::emitThreatEvent(event);
+        }
+    }
+}
+
+void KarmaDetector::printDebugStats() const {
+    Serial.println("[KarmaDetector] Tracking BSSID-to-SSID cardinality.");
+}
