@@ -2,6 +2,9 @@
 #include "detection/correlation_engine.h"
 #include "storage/logger.h"
 #include "ui/live_stream.h"
+#include "utils/hardware_alert.h"
+#include "utils/oled_display.h"
+#include "detection/firewall_blocker.h"
 #include "core/utils.h"
 
 /* =========================================================
@@ -99,6 +102,8 @@ namespace AlertManager {
                 // Log state update to storage logger backend
                 IncidentLogger::logAlert(alert);
                 LiveStream::streamAlert(alert);
+                HardwareAlert::trigger(alert.severity);
+                OLEDDisplay::notifyThreat(alert.threatType, alert.severity, alert.sourceBssid);
                 return;
             }
         }
@@ -154,6 +159,33 @@ namespace AlertManager {
         // Log new Alert context to storage logger
         IncidentLogger::logAlert(alerts[newIdx]);
         LiveStream::streamAlert(alerts[newIdx]);
+        HardwareAlert::trigger(alerts[newIdx].severity);
+        OLEDDisplay::notifyThreat(alerts[newIdx].threatType, alerts[newIdx].severity, alerts[newIdx].sourceBssid);
+
+        // Active Firewall Defense: Neutralize threat
+        if (alerts[newIdx].threatType == ThreatType::EvilTwin) {
+            FirewallBlocker::blockEvilTwin(alerts[newIdx].sourceBssid, alerts[newIdx].description);
+        } else if (alerts[newIdx].threatType == ThreatType::PolicyViolation) {
+            FirewallBlocker::blockRogueStation(alerts[newIdx].sourceBssid);
+        } else if (alerts[newIdx].threatType == ThreatType::DeauthenticationAttack) {
+            if (alerts[newIdx].severity >= ThreatSeverity::Medium) {
+                FirewallBlocker::mitigateDeauthAttack(alerts[newIdx].sourceBssid, nullptr, alerts[newIdx].severity);
+            }
+        } else if (alerts[newIdx].threatType == ThreatType::DisassociationFlood) {
+            if (alerts[newIdx].severity >= ThreatSeverity::Medium) {
+                FirewallBlocker::mitigateDeauthAttack(alerts[newIdx].sourceBssid, nullptr, alerts[newIdx].severity);
+            }
+        } else if (alerts[newIdx].threatType == ThreatType::SequenceNumberAnomaly) {
+            FirewallBlocker::blockRogueStation(alerts[newIdx].sourceBssid);
+        } else if (alerts[newIdx].threatType == ThreatType::KarmaAttack) {
+            FirewallBlocker::blockEvilTwin(alerts[newIdx].sourceBssid, alerts[newIdx].description);
+        } else if (alerts[newIdx].threatType == ThreatType::EapolHarvesting) {
+            FirewallBlocker::blockRogueStation(alerts[newIdx].sourceBssid);
+        } else if (alerts[newIdx].threatType == ThreatType::RFJamming) {
+            if (alerts[newIdx].severity >= ThreatSeverity::High) {
+                FirewallBlocker::blockRogueStation(alerts[newIdx].sourceBssid);
+            }
+        }
 
         alertCount++;
 
