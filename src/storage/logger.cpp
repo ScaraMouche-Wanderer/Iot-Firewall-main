@@ -11,8 +11,10 @@ static std::vector<Alert> nativeAlertStore;
    LITTLEFS STORAGE BACKEND IMPLEMENTATION
 ========================================================= */
 
+#ifndef NATIVE_BUILD
 static const char* FILE_PATH = "/alerts.bin";
 static const char* BACKUP_PATH = "/alerts.old.bin";
+#endif
 
 // Utility check for log configuration
 inline bool autoRotationEnabled() {
