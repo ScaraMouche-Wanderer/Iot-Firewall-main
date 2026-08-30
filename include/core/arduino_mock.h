@@ -28,9 +28,66 @@ inline unsigned long micros() {
     );
 }
 
+// Mock GPIO
+#define HIGH 1
+#define LOW 0
+#define OUTPUT 1
+#define INPUT 0
+#define INPUT_PULLUP 2
+
+extern uint8_t mockPinStates[64];
+extern uint8_t mockPinModes[64];
+
+inline void pinMode(uint8_t pin, uint8_t mode) {
+    if (pin < 64) mockPinModes[pin] = mode;
+}
+
+inline void digitalWrite(uint8_t pin, uint8_t val) {
+    if (pin < 64) mockPinStates[pin] = val;
+}
+
+inline int digitalRead(uint8_t pin) {
+    if (pin < 64) return mockPinStates[pin];
+    return LOW;
+}
+
 inline void delay(unsigned long ms) {
     (void)ms;
 }
+
+// Mock Wire (I2C)
+class MockTwoWire {
+public:
+    inline bool begin(int sda = -1, int scl = -1) { (void)sda; (void)scl; return true; }
+    inline void beginTransmission(uint8_t address) { (void)address; }
+    inline uint8_t endTransmission(bool sendStop = true) { (void)sendStop; return 0; }
+    inline size_t write(uint8_t data) { (void)data; return 1; }
+    inline size_t write(const uint8_t* data, size_t quantity) { (void)data; return quantity; }
+};
+extern MockTwoWire Wire;
+
+#ifndef MOCK_WIFI_INTERFACE_DEFINED
+#define MOCK_WIFI_INTERFACE_DEFINED
+typedef enum {
+    WIFI_IF_STA = 0,
+    WIFI_IF_AP = 1
+} wifi_interface_t;
+
+typedef int esp_err_t;
+#ifndef ESP_OK
+#define ESP_OK 0
+#endif
+
+extern uint32_t mock80211TxCount;
+inline esp_err_t esp_wifi_80211_tx(wifi_interface_t ifx, const void* buffer, int len, bool en_sys_seq) {
+    (void)ifx;
+    (void)buffer;
+    (void)len;
+    (void)en_sys_seq;
+    mock80211TxCount++;
+    return ESP_OK;
+}
+#endif
 
 // Mock Serial object
 class MockSerial {
