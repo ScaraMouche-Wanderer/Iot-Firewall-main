@@ -11,6 +11,16 @@
 #include "core/utils.h"
 #include "network/sniffer.h"
 #include "network/channel_manager.h"
+#include "utils/hardware_alert.h"
+#include "utils/attack_simulator.h"
+#include "detection/policy_detector.h"
+#include "detection/firewall_blocker.h"
+#include "detection/seq_detector.h"
+#include "detection/ap_detectors.h"
+#include "detection/eapol_detector.h"
+#include "detection/retry_detector.h"
+#include "network/oui_database.h"
+#include "utils/oled_display.h"
 #include <string.h>
 
 void setUp(void) {
@@ -20,6 +30,9 @@ void setUp(void) {
     ThreatEngine::initialize();
     IncidentLogger::initialize();
     ConfigManager::initialize();
+    HardwareAlert::initialize();
+    FirewallBlocker::initialize();
+    OLEDDisplay::initialize();
     initSnifferQueue();
 }
 
@@ -381,6 +394,10 @@ void test_config_manager_nvs_persistence(void) {
     // Load from NVS
     TEST_ASSERT_TRUE(ConfigManager::loadConfigFromNVS());
     TEST_ASSERT_EQUAL(75, ConfigManager::get().deauthThreshold);
+
+    // Restore default for subsequent tests
+    ConfigManager::setParam("deauthThreshold", "50");
+    ConfigManager::saveConfigToNVS();
 }
 
 void test_mac_hash_lookup_indexing(void) {
@@ -499,6 +516,407 @@ void test_rssi_anomaly_pipeline_end_to_end(void) {
 }
 
 /* =========================================================
+   6. REAL-WORLD SENTINEL, SIMULATOR & POLICY TESTS
+========================================================= */
+
+void test_hardware_alert_actuator_lifecycle(void) {
+    HardwareAlert::initialize();
+    TEST_ASSERT_EQUAL(ThreatSeverity::Info, HardwareAlert::getCurrentSeverity());
+    TEST_ASSERT_FALSE(HardwareAlert::isAlarmActive());
+
+    // Trigger Critical alert
+    HardwareAlert::trigger(ThreatSeverity::Critical);
+    TEST_ASSERT_EQUAL(ThreatSeverity::Critical, HardwareAlert::getCurrentSeverity());
+    TEST_ASSERT_TRUE(HardwareAlert::isAlarmActive());
+
+    // Mute toggle
+    HardwareAlert::mute(true);
+    TEST_ASSERT_TRUE(HardwareAlert::isMuted());
+    HardwareAlert::mute(false);
+    TEST_ASSERT_FALSE(HardwareAlert::isMuted());
+
+    // Reset back to sentinel heartbeat
+    HardwareAlert::reset();
+    TEST_ASSERT_EQUAL(ThreatSeverity::Info, HardwareAlert::getCurrentSeverity());
+    TEST_ASSERT_FALSE(HardwareAlert::isAlarmActive());
+}
+
+void test_attack_simulator_deauth_injection(void) {
+    AlertManager::clear();
+    HardwareAlert::reset();
+
+    // Inject 60 deauth frames (triggers initial threshold alert)
+    AttackSimulator::simulateDeauthFlood(60);
+
+    TEST_ASSERT_GREATER_THAN(0, AlertManager::getAlertCount());
+    const Alert* alert = AlertManager::getAlert(0);
+    TEST_ASSERT_NOT_NULL(alert);
+    TEST_ASSERT_EQUAL(ThreatType::DeauthenticationAttack, alert->threatType);
+    TEST_ASSERT_EQUAL(ThreatSeverity::Low, HardwareAlert::getCurrentSeverity());
+}
+
+void test_attack_simulator_eviltwin_injection(void) {
+    AlertManager::clear();
+    HardwareAlert::reset();
+
+    // Inject Evil Twin cloning (High severity)
+    AttackSimulator::simulateEvilTwin("OfficeNet");
+
+    TEST_ASSERT_GREATER_THAN(0, AlertManager::getAlertCount());
+    bool foundEvilTwin = false;
+    for (int i = 0; i < AlertManager::getAlertCount(); i++) {
+        const Alert* al = AlertManager::getAlert(i);
+        if (al != nullptr && al->threatType == ThreatType::EvilTwin) {
+            foundEvilTwin = true;
+            break;
+        }
+    }
+    TEST_ASSERT_TRUE(foundEvilTwin);
+    TEST_ASSERT_TRUE(HardwareAlert::isAlarmActive());
+}
+
+void test_policy_violation_detector_zero_trust(void) {
+    AlertManager::clear();
+    DeviceDatabase::clearWhitelist();
+
+    uint8_t unknownMac[6] = {0xAA, 0x11, 0x22, 0x33, 0x44, 0x55};
+    uint8_t apMac[6]      = {0x00, 0x14, 0xD1, 0x01, 0x02, 0x03};
+
+    // 1. With strict policy disabled, unknown data frames do not trigger PolicyViolation
+    ConfigManager::get().strictFirewallPolicy = false;
+    Observation obsPermissive;
+    memset(&obsPermissive, 0, sizeof(Observation));
+    obsPermissive.type = ObservationType::DataTransmitted;
+    obsPermissive.frameType = FrameType::Data;
+    obsPermissive.channel = 1;
+    obsPermissive.rssi = -60;
+    obsPermissive.timestamp = millis();
+    memcpy(obsPermissive.srcMacBuffer, unknownMac, 6);
+    memcpy(obsPermissive.dstMacBuffer, apMac, 6);
+    obsPermissive.sourceMac = obsPermissive.srcMacBuffer;
+    obsPermissive.destinationMac = obsPermissive.dstMacBuffer;
+    obsPermissive.fixupPointers();
+
+    ThreatEngine::process(obsPermissive);
+    TEST_ASSERT_EQUAL(0, AlertManager::getAlertCount());
+
+    // 2. Enable strict Zero-Trust policy: unknown MAC transmitting data triggers alert
+    ConfigManager::get().strictFirewallPolicy = true;
+    obsPermissive.timestamp = millis() + 500;
+    ThreatEngine::process(obsPermissive);
+
+    TEST_ASSERT_GREATER_THAN(0, AlertManager::getAlertCount());
+    const Alert* alert = AlertManager::getAlert(0);
+    TEST_ASSERT_NOT_NULL(alert);
+    TEST_ASSERT_EQUAL(ThreatType::PolicyViolation, alert->threatType);
+
+    // 3. Whitelist the MAC address: transmission no longer raises alert
+    DeviceDatabase::addToWhitelist(unknownMac);
+    AlertManager::clear();
+
+    obsPermissive.timestamp = millis() + 20000; // Past cooldown
+    ThreatEngine::process(obsPermissive);
+    TEST_ASSERT_EQUAL(0, AlertManager::getAlertCount());
+
+    // Restore default
+    ConfigManager::get().strictFirewallPolicy = false;
+}
+
+/* =========================================================
+   7. ACTIVE FIREWALL MITIGATION & OLED DISPLAY TESTS
+========================================================= */
+
+void test_firewall_blocker_active_mitigation(void) {
+    FirewallBlocker::initialize();
+    mock80211TxCount = 0;
+    ConfigManager::get().activeDefenseEnabled = true;
+
+    uint8_t rogueAp[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01};
+    uint8_t rogueSta[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x02};
+    uint8_t myAp[6] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
+
+    // 1. Block Evil Twin AP
+    bool blocked = FirewallBlocker::blockEvilTwin(rogueAp, "ClonedFreeWiFi");
+    TEST_ASSERT_TRUE(blocked);
+    TEST_ASSERT_GREATER_THAN(0, mock80211TxCount);
+    TEST_ASSERT_EQUAL(1, FirewallBlocker::getBlockedCount());
+    TEST_ASSERT_TRUE(DeviceDatabase::isBlacklisted(rogueAp));
+
+    // 2. Block Rogue Station (Zero-Trust)
+    uint32_t prevTx = mock80211TxCount;
+    blocked = FirewallBlocker::blockRogueStation(rogueSta, myAp);
+    TEST_ASSERT_TRUE(blocked);
+    TEST_ASSERT_GREATER_THAN(prevTx, mock80211TxCount);
+    TEST_ASSERT_EQUAL(2, FirewallBlocker::getBlockedCount());
+    TEST_ASSERT_TRUE(DeviceDatabase::isBlacklisted(rogueSta));
+
+    // 3. Rate limiting test: immediate duplicate block for same MAC is rate-limited
+    bool dupeBlocked = FirewallBlocker::blockEvilTwin(rogueAp, "ClonedFreeWiFi");
+    TEST_ASSERT_FALSE(dupeBlocked);
+
+    // 4. Test passive/disabled mode
+    ConfigManager::get().activeDefenseEnabled = false;
+    uint8_t otherMac[6] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
+    blocked = FirewallBlocker::blockRogueStation(otherMac, myAp);
+    TEST_ASSERT_FALSE(blocked);
+
+    // Restore active defense default
+    ConfigManager::get().activeDefenseEnabled = true;
+}
+
+void test_firewall_blocker_blacklist_operations(void) {
+    DeviceDatabase::clearBlacklist();
+    TEST_ASSERT_EQUAL(0, DeviceDatabase::getBlacklistCount());
+
+    uint8_t testMac[6] = {0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC};
+    TEST_ASSERT_FALSE(DeviceDatabase::isBlacklisted(testMac));
+
+    // Add to blacklist
+    bool added = DeviceDatabase::addToBlacklist(testMac);
+    TEST_ASSERT_TRUE(added);
+    TEST_ASSERT_EQUAL(1, DeviceDatabase::getBlacklistCount());
+    TEST_ASSERT_TRUE(DeviceDatabase::isBlacklisted(testMac));
+
+    // Duplicate add should be idempotent and not increase count
+    added = DeviceDatabase::addToBlacklist(testMac);
+    TEST_ASSERT_TRUE(added);
+    TEST_ASSERT_EQUAL(1, DeviceDatabase::getBlacklistCount());
+
+    // Remove from blacklist
+    bool removed = DeviceDatabase::removeFromBlacklist(testMac);
+    TEST_ASSERT_TRUE(removed);
+    TEST_ASSERT_EQUAL(0, DeviceDatabase::getBlacklistCount());
+    TEST_ASSERT_FALSE(DeviceDatabase::isBlacklisted(testMac));
+}
+
+void test_oled_display_hud_and_virtual_screen(void) {
+    OLEDDisplay::initialize();
+    OLEDDisplay::updateTelemetry(120, -55, 6, 8, 3);
+
+    uint8_t attackerMac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xAA, 0xBB};
+    OLEDDisplay::notifyThreat(ThreatType::DeauthenticationAttack, ThreatSeverity::High, attackerMac);
+    OLEDDisplay::render();
+
+    char lines[8][OLEDDisplay::LINE_BUF_LEN];
+    OLEDDisplay::getScreenLines(lines);
+
+    // Verify header format contains shield and channel
+    TEST_ASSERT_NOT_NULL(strstr(lines[0], "SHIELD:ACTIVE"));
+    TEST_ASSERT_NOT_NULL(strstr(lines[0], "CH:06"));
+
+    // Verify Telemetry: "PPS:120"
+    TEST_ASSERT_NOT_NULL(strstr(lines[1], "PPS:120"));
+
+    // Verify threat ticker
+    TEST_ASSERT_NOT_NULL(strstr(lines[4], "DEAUTH FLOOD"));
+
+    // Verify footer: "BLK:3"
+    TEST_ASSERT_NOT_NULL(strstr(lines[7], "BLK:3"));
+}
+
+/* =========================================================
+   8. REAL-WORLD DEAUTH DEFENSE & CHANNEL LOCK TESTS
+========================================================= */
+
+void test_channel_manager_locking_and_timeout(void) {
+    initChannelManager();
+    TEST_ASSERT_FALSE(isChannelLocked());
+
+    // Lock to channel 9 with manual lock
+    TEST_ASSERT_TRUE(lockChannel(9, 0));
+    TEST_ASSERT_TRUE(isChannelLocked());
+    TEST_ASSERT_EQUAL(9, currentChannel);
+
+    // Calling hopChannel should not change channel 9
+    hopChannel();
+    TEST_ASSERT_EQUAL(9, currentChannel);
+
+    // Release lock
+    unlockChannel();
+    TEST_ASSERT_FALSE(isChannelLocked());
+
+    // Calling hopChannel should now advance
+    hopChannel();
+    TEST_ASSERT_EQUAL(10, currentChannel);
+}
+
+void test_firewall_blocker_spoofed_deauth_protection(void) {
+    ConfigManager::get().activeDefenseEnabled = true;
+    AccessPointDatabase::clear();
+    DeviceDatabase::clearBlacklist();
+    unlockChannel();
+
+    // Register legitimate AP
+    uint8_t legitApMac[6] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
+    Observation obs;
+    memset(&obs, 0, sizeof(obs));
+    obs.type = ObservationType::BeaconSeen;
+    obs.bssid = legitApMac;
+    obs.sourceMac = legitApMac;
+    obs.channel = 6;
+    strcpy(obs.ssid, "HomeWiFi");
+    int idx = AccessPointDatabase::addAP(obs);
+    TEST_ASSERT_NOT_EQUAL(-1, idx);
+
+    // Attacker spoofs legit AP's MAC in a deauth flood
+    uint8_t victimMac[6] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x01};
+    currentChannel = 6;
+    bool mitigated = FirewallBlocker::mitigateDeauthAttack(legitApMac, victimMac, ThreatSeverity::High);
+
+    TEST_ASSERT_TRUE(mitigated);
+    // Anti-self-denial: legitimate AP MUST NOT be blacklisted!
+    TEST_ASSERT_FALSE(DeviceDatabase::isBlacklisted(legitApMac));
+    // Defensive channel lock should be engaged on channel 6
+    TEST_ASSERT_TRUE(isChannelLocked());
+    TEST_ASSERT_EQUAL(6, currentChannel);
+}
+
+void test_firewall_blocker_affirmation_frame_generation(void) {
+    ConfigManager::get().activeDefenseEnabled = true;
+    uint8_t bssid[6] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
+    bool sent = FirewallBlocker::transmitAffirmationFrame(bssid, "SecureIoT", 6, 2);
+    TEST_ASSERT_TRUE(sent);
+}
+
+void test_oui_database_lookup(void) {
+    uint8_t espMac[6] = {0x24, 0x0A, 0xC4, 0x11, 0x22, 0x33};
+    VendorInfo vEsp = OUIDatabase::lookup(espMac);
+    TEST_ASSERT_EQUAL_STRING("Espressif", vEsp.vendorName);
+    TEST_ASSERT_FALSE(vEsp.isRandomized);
+
+    uint8_t appleMac[6] = {0x00, 0x03, 0x93, 0x44, 0x55, 0x66};
+    VendorInfo vApple = OUIDatabase::lookup(appleMac);
+    TEST_ASSERT_EQUAL_STRING("Apple", vApple.vendorName);
+    TEST_ASSERT_FALSE(vApple.isRandomized);
+
+    uint8_t rpiMac[6] = {0xB8, 0x27, 0xEB, 0x77, 0x88, 0x99};
+    VendorInfo vRpi = OUIDatabase::lookup(rpiMac);
+    TEST_ASSERT_EQUAL_STRING("Raspberry Pi", vRpi.vendorName);
+
+    uint8_t randomMac[6] = {0xDA, 0xB0, 0x20, 0xC7, 0xC6, 0x59};
+    VendorInfo vRand = OUIDatabase::lookup(randomMac);
+    TEST_ASSERT_TRUE(vRand.isRandomized);
+}
+
+void test_seq_anomaly_detector_triggering(void) {
+    SeqAnomalyDetector detector;
+    AlertManager::initialize();
+    ThreatEngine::initialize();
+
+    uint8_t clientMac[6] = {0x3C, 0x71, 0xBF, 0x11, 0x22, 0x33};
+    Observation obs;
+    memset(&obs, 0, sizeof(Observation));
+    obs.type = ObservationType::DataTransmitted;
+    obs.sourceMac = clientMac;
+    obs.timestamp = 1000;
+    obs.sequenceNumber = 100;
+    detector.process(obs);
+
+    // Normal monotonic forward sequence
+    obs.timestamp = 1100;
+    obs.sequenceNumber = 102;
+    detector.process(obs);
+
+    // Anomaly 1: Sudden backwards step
+    obs.timestamp = 1200;
+    obs.sequenceNumber = 50;
+    detector.process(obs);
+
+    // Anomaly 2: Sudden zero reset
+    obs.timestamp = 1300;
+    obs.sequenceNumber = 0;
+    detector.process(obs);
+
+    TEST_ASSERT_GREATER_THAN(0, AlertManager::getAlertCount());
+}
+
+void test_karma_detector_multi_ssid_triggering(void) {
+    KarmaDetector detector;
+    AlertManager::initialize();
+    ThreatEngine::initialize();
+
+    uint8_t rogueBssid[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0x88, 0x99};
+    Observation obs;
+    memset(&obs, 0, sizeof(Observation));
+    obs.type = ObservationType::BeaconSeen;
+    obs.bssid = rogueBssid;
+    obs.timestamp = 1000;
+
+    strcpy(obs.ssid, "Starbucks_WiFi");
+    detector.process(obs);
+
+    obs.timestamp = 2000;
+    strcpy(obs.ssid, "Airport_Free_Net");
+    detector.process(obs);
+
+    obs.timestamp = 3000;
+    strcpy(obs.ssid, "Hotel_Guest_LAN");
+    detector.process(obs);
+
+    TEST_ASSERT_GREATER_THAN(0, AlertManager::getAlertCount());
+}
+
+void test_eapol_detector_harvesting_triggering(void) {
+    EapolHarvestingDetector detector;
+    detector.reset();
+
+    uint8_t clientMac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xAA, 0x11};
+    uint8_t apBssid[6]   = {0x00, 0x14, 0xD1, 0x11, 0x22, 0x33};
+
+    for (int i = 0; i < 3; i++) {
+        Observation authObs;
+        memset(&authObs, 0, sizeof(Observation));
+        authObs.type = ObservationType::AuthenticationSent;
+        authObs.sourceMac = apBssid;
+        authObs.destinationMac = clientMac;
+        authObs.timestamp = 1000 + (i * 200);
+        detector.process(authObs);
+
+        Observation assocObs;
+        memset(&assocObs, 0, sizeof(Observation));
+        assocObs.type = ObservationType::AssociationRequestSeen;
+        assocObs.sourceMac = clientMac;
+        assocObs.destinationMac = apBssid;
+        assocObs.timestamp = 1050 + (i * 200);
+        detector.process(assocObs);
+    }
+
+    // Now inject protected data frames (EAPOL 4-way handshake)
+    for (int i = 0; i < 2; i++) {
+        Observation dataObs;
+        memset(&dataObs, 0, sizeof(Observation));
+        dataObs.type = ObservationType::DataTransmitted;
+        dataObs.sourceMac = clientMac;
+        dataObs.protectedFrame = true;
+        dataObs.timestamp = 1600 + (i * 50);
+        detector.process(dataObs);
+    }
+
+    TEST_ASSERT_GREATER_THAN(0, AlertManager::getAlertCount());
+}
+
+void test_retry_detector_rf_jamming_triggering(void) {
+    RetryRateDetector detector;
+    detector.reset();
+
+    uint8_t jammerMac[6] = {0xBA, 0xAD, 0xF0, 0x0D, 0x99, 0x88};
+
+    // Send 25 frames with 80% retry flag
+    for (int i = 0; i < 25; i++) {
+        Observation obs;
+        memset(&obs, 0, sizeof(Observation));
+        obs.type = ObservationType::DataTransmitted;
+        obs.frameType = FrameType::Data;
+        obs.sourceMac = jammerMac;
+        obs.retry = (i < 20); // 20/25 = 80% retry
+        obs.timestamp = 1000 + (i * 10);
+        detector.process(obs);
+    }
+
+    TEST_ASSERT_GREATER_THAN(0, AlertManager::getAlertCount());
+}
+
+/* =========================================================
    UNITY MAIN RUNNER
 ========================================================= */
 
@@ -533,6 +951,29 @@ int main(int argc, char** argv) {
     // 5. Pipeline Integration Tests (Production Call Order)
     RUN_TEST(test_channel_anomaly_pipeline_end_to_end);
     RUN_TEST(test_rssi_anomaly_pipeline_end_to_end);
+
+    // 6. Real-World Sentinel, Simulator & Policy Tests
+    RUN_TEST(test_hardware_alert_actuator_lifecycle);
+    RUN_TEST(test_attack_simulator_deauth_injection);
+    RUN_TEST(test_attack_simulator_eviltwin_injection);
+    RUN_TEST(test_policy_violation_detector_zero_trust);
+
+    // 7. Active Firewall Mitigation & OLED HUD Tests
+    RUN_TEST(test_firewall_blocker_active_mitigation);
+    RUN_TEST(test_firewall_blocker_blacklist_operations);
+    RUN_TEST(test_oled_display_hud_and_virtual_screen);
+
+    // 8. Real-World Deauth Defense & Channel Lock Tests
+    RUN_TEST(test_channel_manager_locking_and_timeout);
+    RUN_TEST(test_firewall_blocker_spoofed_deauth_protection);
+    RUN_TEST(test_firewall_blocker_affirmation_frame_generation);
+
+    // 9. Academic & Advanced WIDS Research Tests
+    RUN_TEST(test_oui_database_lookup);
+    RUN_TEST(test_seq_anomaly_detector_triggering);
+    RUN_TEST(test_karma_detector_multi_ssid_triggering);
+    RUN_TEST(test_eapol_detector_harvesting_triggering);
+    RUN_TEST(test_retry_detector_rf_jamming_triggering);
 
     return UNITY_END();
 }
