@@ -40,4 +40,27 @@ inline int esp_wifi_set_promiscuous_rx_cb(wifi_promiscuous_cb_t) { return 0; }
 inline int esp_wifi_set_channel(uint8_t, int) { return 0; }
 inline uint32_t esp_get_free_heap_size() { return 250000; }
 
+#ifndef MOCK_WIFI_INTERFACE_DEFINED
+#define MOCK_WIFI_INTERFACE_DEFINED
+typedef enum {
+    WIFI_IF_STA = 0,
+    WIFI_IF_AP = 1
+} wifi_interface_t;
+
+typedef int esp_err_t;
+#ifndef ESP_OK
+#define ESP_OK 0
+#endif
+
+extern uint32_t mock80211TxCount;
+inline esp_err_t esp_wifi_80211_tx(wifi_interface_t ifx, const void* buffer, int len, bool en_sys_seq) {
+    (void)ifx;
+    (void)buffer;
+    (void)len;
+    (void)en_sys_seq;
+    mock80211TxCount++;
+    return ESP_OK;
+}
+#endif
+
 #endif // MOCK_ESP_WIFI_H
