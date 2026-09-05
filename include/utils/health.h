@@ -44,6 +44,21 @@ namespace SystemHealth {
      * Periodically formats and prints runtime performance statistics.
      */
     void printPerformanceReport();
+
+    /**
+     * Returns the system uptime in seconds.
+     */
+    uint32_t getUptimeSeconds();
+
+    /**
+     * Returns the free heap memory in bytes.
+     */
+    uint32_t getFreeHeap();
+
+    /**
+     * Returns the minimum free heap since boot (watermark).
+     */
+    uint32_t getMinFreeHeap();
 }
 
 #endif // HEALTH_H
