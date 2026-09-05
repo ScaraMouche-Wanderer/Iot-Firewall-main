@@ -85,4 +85,24 @@ namespace SystemHealth {
         Serial.printf("Dropped Packets:  %lu events\n", static_cast<unsigned long>(droppedPackets));
         Serial.println("===============================================\n");
     }
+
+    uint32_t getUptimeSeconds() {
+        return static_cast<uint32_t>((millis() - startTime) / 1000);
+    }
+
+    uint32_t getFreeHeap() {
+#ifndef NATIVE_BUILD
+        return esp_get_free_heap_size();
+#else
+        return 250000;
+#endif
+    }
+
+    uint32_t getMinFreeHeap() {
+#ifndef NATIVE_BUILD
+        return esp_get_minimum_free_heap_size();
+#else
+        return 200000;
+#endif
+    }
 }
