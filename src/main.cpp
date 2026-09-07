@@ -15,6 +15,10 @@
 #include "utils/benchmark.h"
 #include "ui/reporting.h"
 #include "ui/cli.h"
+#include "utils/hardware_alert.h"
+#include "utils/oled_display.h"
+#include "detection/firewall_blocker.h"
+#include "ui/live_stream.h"
 
 /* =========================================================
    FIRMWARE ENTRY POINTS
@@ -44,6 +48,9 @@ void setup() {
     // Initialize Phase 8 managers
     ConfigManager::initialize();
     SystemHealth::initialize();
+    HardwareAlert::initialize();
+    FirewallBlocker::initialize();
+    OLEDDisplay::initialize();
     SerialCLI::initialize();
 
     Serial.printf("%s Version %s\n", PROJECT_NAME, VERSION);
@@ -63,6 +70,7 @@ void loop() {
     // Do NOT call processSnifferQueue() here — dual consumers cause a race condition.
 
     SerialCLI::process();
+    HardwareAlert::update();
     DeviceDatabase::cleanup();
     AccessPointDatabase::cleanup();
     AlertManager::cleanup();
@@ -72,12 +80,43 @@ void loop() {
     // 1. Hop Channel
     static unsigned long lastHop = 0;
     if (now - lastHop >= HOP_INTERVAL) {
-        hopChannel();
+        if (!isChannelLocked()) {
+            hopChannel();
+            SystemHealth::incrementSwitches();
+        }
         lastHop = now;
-        SystemHealth::incrementSwitches();
     }
 
-    // 2. Output Periodic Behavior and Occupancy reports
+    // 2. Periodic Cyber-Sentinel OLED Display Update (every 300ms)
+    static unsigned long lastDisplayUpdate = 0;
+    static uint32_t lastPackets = 0;
+    static unsigned long lastPpsTime = 0;
+    static uint32_t currentPps = 0;
+
+    if (now - lastDisplayUpdate >= 300) {
+        unsigned long ppsElapsed = now - lastPpsTime;
+        if (ppsElapsed >= 1000) {
+            uint32_t totalPkts = SystemHealth::processedPackets;
+            currentPps = (totalPkts >= lastPackets) ? ((totalPkts - lastPackets) * 1000 / ppsElapsed) : 0;
+            lastPackets = totalPkts;
+            lastPpsTime = now;
+        }
+
+        int8_t avgRssi = -70;
+        if (currentChannel >= CHANNEL_MIN && currentChannel <= CHANNEL_MAX) {
+            if (channelStats[currentChannel].packetCount > 0) {
+                avgRssi = static_cast<int8_t>(channelStats[currentChannel].rssiSum / channelStats[currentChannel].packetCount);
+            }
+        }
+
+        int devCount = DeviceDatabase::getDeviceCount();
+        uint32_t blocked = FirewallBlocker::getBlockedCount();
+        OLEDDisplay::updateTelemetry(currentPps, avgRssi, static_cast<uint8_t>(currentChannel), devCount, blocked);
+        OLEDDisplay::render();
+        lastDisplayUpdate = now;
+    }
+
+    // 3. Output Periodic Behavior and Occupancy reports
     static unsigned long lastReport = 0;
     unsigned long interval = ConfigManager::get().reportingIntervalMs;
     if (now - lastReport >= interval) {
@@ -90,6 +129,22 @@ void loop() {
         }
         
         lastReport = now;
+    }
+
+    // 4. Periodic Live Telemetry Stats Stream (every 2000ms)
+    static unsigned long lastStatsStream = 0;
+    if (now - lastStatsStream >= 2000) {
+        LiveStream::streamStats(
+            SystemHealth::getUptimeSeconds(),
+            currentPps,
+            SystemHealth::getFreeHeap(),
+            DeviceDatabase::getDeviceCount(),
+            AccessPointDatabase::getAPCount(),
+            AlertManager::getAlertCount(),
+            FirewallBlocker::getBlockedCount(),
+            static_cast<uint8_t>(currentChannel)
+        );
+        lastStatsStream = now;
     }
 
     delay(10);
