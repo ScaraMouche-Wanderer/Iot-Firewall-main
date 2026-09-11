@@ -1,0 +1,4 @@
+# Ignore all packet captures recorded during live threat events
+*.pcap
+*.pcapng
+*.cap
