@@ -3,23 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 IoT Firewall & WIDS Live Dashboard</title>
+    <title>ESP32 IoT Firewall Sentinel | C2 Mission Control</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #090d16;
-            --bg-card: rgba(30, 41, 59, 0.7);
+            /* Sleek Cyber-Sentinel Clean Palette */
+            --bg-base: #070a12;
+            --bg-card: rgba(13, 19, 34, 0.78);
+            --bg-card-hover: rgba(20, 29, 52, 0.88);
+            --bg-subtle: #0e1526;
+            --bg-input: #0a0f1d;
             --border-card: rgba(255, 255, 255, 0.08);
-            --primary: #38bdf8;
-            --primary-glow: rgba(56, 189, 248, 0.25);
-            --accent-red: #ef4444;
-            --accent-orange: #f97316;
-            --accent-yellow: #eab308;
+            --border-subtle: rgba(255, 255, 255, 0.14);
+            --border-glow: rgba(6, 182, 212, 0.35);
+
+            --primary: #06b6d4;
+            --primary-hover: #0891b2;
+            --primary-subtle: rgba(6, 182, 212, 0.12);
+
             --accent-green: #10b981;
+            --accent-green-subtle: rgba(16, 185, 129, 0.14);
+            --accent-red: #ef4444;
+            --accent-red-subtle: rgba(239, 68, 68, 0.15);
+            --accent-amber: #f59e0b;
+            --accent-amber-subtle: rgba(245, 158, 11, 0.15);
+            --accent-purple: #a855f7;
+            --accent-purple-subtle: rgba(168, 85, 247, 0.15);
+
             --text-main: #f8fafc;
             --text-sub: #94a3b8;
+            --text-muted: #64748b;
+
+            --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+            --shadow-glow: 0 0 24px -4px rgba(6, 182, 212, 0.25);
+            --radius-card: 14px;
+            --radius-btn: 8px;
         }
 
         * {
@@ -29,17 +49,19 @@
         }
 
         body {
-            background-color: var(--bg-dark);
+            background-color: var(--bg-base);
             background-image: 
-                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(239, 68, 68, 0.05) 0px, transparent 50%);
+                radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.08) 0px, transparent 45%),
+                radial-gradient(at 100% 0%, rgba(239, 68, 68, 0.06) 0px, transparent 40%),
+                radial-gradient(at 50% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
             color: var(--text-main);
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             min-height: 100vh;
-            padding: 24px;
+            padding: 14px 20px 24px;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Header Navigation */
+        /* Top Command Header */
         header {
             display: flex;
             justify-content: space-between;
@@ -47,580 +69,1426 @@
             background: var(--bg-card);
             backdrop-filter: blur(16px);
             border: 1px solid var(--border-card);
-            border-radius: 16px;
-            padding: 16px 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border-radius: var(--radius-card);
+            padding: 10px 18px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-card);
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .brand {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
         .brand-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #0284c7, #38bdf8);
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #0891b2, #06b6d4);
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 700;
-            font-size: 20px;
-            box-shadow: 0 0 20px var(--primary-glow);
+            font-size: 18px;
+            box-shadow: 0 0 14px rgba(6, 182, 212, 0.35);
+            color: #ffffff;
         }
 
         .brand-text h1 {
-            font-size: 18px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: -0.2px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .brand-text p {
-            font-size: 12px;
-            color: var(--text-sub);
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
         }
 
-        .controls {
+        /* Top Live Telemetry Badges */
+        .header-telemetry {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 6px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-card);
+            border-radius: 20px;
+            padding: 4px 10px;
         }
 
-        select, button, input {
-            font-family: inherit;
-            font-size: 13px;
-            border-radius: 8px;
-            border: 1px solid var(--border-card);
-            outline: none;
+        .telem-pill {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-sub);
+            padding: 2px 6px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .telem-pill strong {
+            color: var(--text-main);
+            font-weight: 700;
+        }
+
+        .telem-divider {
+            color: var(--border-subtle);
+            font-size: 10px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Status Pill */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--accent-red-subtle);
+            color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
             transition: all 0.2s ease;
         }
 
-        select {
-            background: rgba(15, 23, 42, 0.8);
+        .status-pill.connected {
+            background: var(--accent-green-subtle);
+            color: var(--accent-green);
+            border-color: rgba(16, 185, 129, 0.35);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+        }
+
+        .status-pill.cloud-sync {
+            background: var(--primary-subtle);
+            color: var(--primary);
+            border-color: rgba(6, 182, 212, 0.35);
+        }
+
+        .status-pill.demo {
+            background: var(--accent-purple-subtle);
+            color: var(--accent-purple);
+            border-color: rgba(168, 85, 247, 0.35);
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulseDot 1.8s infinite ease-in-out;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        /* Buttons & Inputs */
+        button, select, input {
+            font-family: inherit;
+            font-size: 12px;
+            border-radius: var(--radius-btn);
+            border: 1px solid var(--border-card);
+            outline: none;
+            transition: all 0.18s ease;
+        }
+
+        select, input {
+            background: var(--bg-input);
             color: var(--text-main);
-            padding: 8px 12px;
+            padding: 6px 10px;
+            border: 1px solid var(--border-card);
+        }
+
+        select:focus, input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--border-glow);
         }
 
         button {
-            background: linear-gradient(135deg, #0284c7, #0369a1);
-            color: white;
+            background: linear-gradient(135deg, #0891b2, #0284c7);
+            color: #ffffff;
             font-weight: 600;
-            padding: 9px 18px;
+            padding: 6px 13px;
             cursor: pointer;
             border: none;
-            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+            box-shadow: 0 2px 8px rgba(6, 182, 212, 0.25);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
 
-        button:hover {
+        button:hover:not(:disabled) {
             transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(2, 132, 199, 0.4);
+            box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35);
+            filter: brightness(1.1);
         }
 
-        button.btn-danger {
-            background: linear-gradient(135deg, #dc2626, #b91c1c);
-            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        button:active:not(:disabled) {
+            transform: translateY(0);
         }
 
         button.btn-secondary {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--bg-subtle);
             color: var(--text-main);
             border: 1px solid var(--border-card);
             box-shadow: none;
         }
 
-        button.btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
+        button.btn-secondary:hover:not(:disabled) {
+            background: #192338;
+            border-color: var(--border-subtle);
         }
 
-        .status-pill {
-            display: inline-flex;
+        button.btn-danger {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        button.btn-amber {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+        }
+
+        /* Unified Clean Defense & Drill Control Bar */
+        .c2-command-strip {
+            display: flex;
             align-items: center;
-            gap: 6px;
+            justify-content: space-between;
+            background: var(--bg-card);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--border-card);
+            border-radius: var(--radius-card);
+            padding: 8px 14px;
+            margin-bottom: 12px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .mode-cluster {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mode-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .segmented-mode-selector {
+            display: flex;
+            background: var(--bg-input);
+            border: 1px solid var(--border-card);
+            border-radius: 10px;
+            padding: 3px;
+            gap: 3px;
+        }
+
+        .mode-btn {
             padding: 6px 12px;
-            border-radius: 20px;
+            border-radius: 6px;
             font-size: 12px;
             font-weight: 600;
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--accent-red);
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            background: transparent;
+            color: var(--text-sub);
+            box-shadow: none;
+            border: 1px solid transparent;
+            transition: all 0.18s ease;
         }
 
-        .status-pill.connected {
-            background: rgba(16, 185, 129, 0.15);
+        .mode-btn:hover:not(.active) {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.04);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .mode-btn.active.sentry {
+            background: var(--accent-green-subtle);
             color: var(--accent-green);
-            border-color: rgba(16, 185, 129, 0.3);
+            border-color: rgba(16, 185, 129, 0.4);
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
         }
 
-        .status-dot {
+        .mode-btn.active.shield {
+            background: var(--accent-red-subtle);
+            color: var(--accent-red);
+            border-color: rgba(239, 68, 68, 0.4);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+        }
+
+        .mode-btn.active.lockdown {
+            background: var(--accent-amber-subtle);
+            color: var(--accent-amber);
+            border-color: rgba(245, 158, 11, 0.4);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+        }
+
+        .drill-cluster {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .drill-select {
+            padding: 6px 10px;
+            font-weight: 500;
+            width: 290px;
+            max-width: 100%;
+        }
+
+        /* Compact Hardware Actuator Strip */
+        .hardware-strip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: var(--radius-card);
+            padding: 8px 16px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 11px;
+        }
+
+        .hw-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-sub);
+        }
+
+        .hw-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: currentColor;
+            background: var(--border-subtle);
+            transition: all 0.25s ease;
         }
 
-        /* Metrics Summary Grid */
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
+        .hw-dot.active {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
         }
 
-        .metric-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border-card);
-            border-radius: 14px;
-            padding: 18px 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        .hw-dot.alarm {
+            background: var(--accent-red);
+            box-shadow: 0 0 12px var(--accent-red);
+            animation: pulseAlarm 0.4s infinite alternate;
         }
 
-        .metric-card .title {
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--text-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
+        @keyframes pulseAlarm {
+            from { transform: scale(1); opacity: 1; }
+            to { transform: scale(1.3); opacity: 0.6; }
         }
 
-        .metric-card .value {
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: -1px;
-        }
-
-        .metric-card.alert-card .value { color: var(--accent-red); }
-        .metric-card.device-card .value { color: var(--primary); }
-        .metric-card.ap-card .value { color: var(--accent-orange); }
-        .metric-card.stream-card .value { color: var(--accent-green); }
-
-        /* Main Content Grid */
+        /* Main Workspace Layout */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-            margin-bottom: 24px;
+            grid-template-columns: 1.35fr 1fr;
+            gap: 14px;
         }
 
-        @media (max-width: 1024px) {
+        @media (max-width: 1080px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
             }
         }
 
+        /* Cards */
         .card {
             background: var(--bg-card);
-            backdrop-filter: blur(16px);
+            backdrop-filter: blur(14px);
             border: 1px solid var(--border-card);
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+            border-radius: var(--radius-card);
+            padding: 14px;
+            box-shadow: var(--shadow-card);
             display: flex;
             flex-direction: column;
+            gap: 10px;
         }
 
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-card);
         }
 
         .card-title {
-            font-size: 15px;
-            font-weight: 600;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            letter-spacing: -0.2px;
         }
 
-        /* Tables */
+        /* Radar View Filter Tabs */
+        .radar-tabs {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1px solid var(--border-card);
+            padding-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .radar-tab {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            background: transparent;
+            color: var(--text-muted);
+            box-shadow: none;
+            border: 1px solid transparent;
+            cursor: pointer;
+        }
+
+        .radar-tab:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.04);
+            transform: none;
+        }
+
+        .radar-tab.active {
+            background: var(--primary-subtle);
+            color: var(--primary);
+            border-color: rgba(6, 182, 212, 0.35);
+        }
+
+        /* Table */
         .table-container {
             overflow-x: auto;
-            max-height: 340px;
+            max-height: 420px;
             overflow-y: auto;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
+            font-size: 12px;
             text-align: left;
         }
 
         th {
-            background: rgba(15, 23, 42, 0.6);
-            color: var(--text-sub);
-            font-weight: 600;
-            padding: 10px 12px;
+            background: var(--bg-input);
+            color: var(--text-muted);
+            padding: 8px 10px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-card);
             position: sticky;
             top: 0;
             z-index: 2;
         }
 
         td {
-            padding: 10px 12px;
+            padding: 8px 10px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+
+        tbody tr {
+            cursor: pointer;
+            transition: background 0.12s ease;
+        }
+
+        tbody tr:hover {
+            background: var(--bg-card-hover);
+        }
+
+        tbody tr.selected {
+            background: rgba(6, 182, 212, 0.12);
+            border-left: 3px solid var(--primary);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 7px;
+            border-radius: 5px;
+            font-size: 10px;
+            font-weight: 700;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 12px;
         }
 
-        tr:hover {
-            background: rgba(255, 255, 255, 0.03);
+        .badge-trusted {
+            background: var(--accent-green-subtle);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
         }
 
-        /* Alert Cards Feed */
-        .alert-feed {
+        .badge-untrusted {
+            background: rgba(100, 116, 139, 0.15);
+            color: #94a3b8;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        .badge-blacklisted {
+            background: var(--accent-red-subtle);
+            color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .badge-amber {
+            background: var(--accent-amber-subtle);
+            color: var(--accent-amber);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        /* Trust Score Pill */
+        .trust-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .trust-high {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+        }
+
+        .trust-mid {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-amber);
+        }
+
+        .trust-low {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+        }
+
+        /* RSSI Micro Gauge */
+        .rssi-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+        }
+
+        .rssi-bar-mini {
+            width: 38px;
+            height: 4px;
+            background: #1e293b;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .rssi-fill-mini {
+            height: 100%;
+            background: var(--accent-green);
+            transition: width 0.2s ease;
+        }
+
+        /* 13-Channel RF Spectrum Occupancy Visualizer */
+        .spectrum-card {
+            background: var(--bg-input);
+            border: 1px solid var(--border-card);
+            border-radius: 10px;
+            padding: 10px 14px;
+        }
+
+        .spectrum-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .spectrum-bars {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 4px;
+            height: 52px;
+            padding-top: 4px;
+        }
+
+        .spectrum-col {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            max-height: 340px;
+            align-items: center;
+            gap: 3px;
+            height: 100%;
+            justify-content: flex-end;
+        }
+
+        .spectrum-bar-wrap {
+            width: 100%;
+            height: 38px;
+            display: flex;
+            align-items: flex-end;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 3px 3px 0 0;
+            overflow: hidden;
+        }
+
+        .spectrum-bar {
+            width: 100%;
+            background: var(--primary);
+            border-radius: 2px 2px 0 0;
+            min-height: 2px;
+            transition: height 0.3s ease, background 0.3s ease;
+        }
+
+        .spectrum-col.locked .spectrum-bar {
+            background: var(--accent-amber);
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+        }
+
+        .spectrum-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Right Column (Inspector & Alerts & HUD) */
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        /* Station Inspector Drawer */
+        .inspector-panel {
+            background: var(--bg-input);
+            border: 1px solid var(--border-card);
+            border-radius: 12px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .inspector-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+        }
+
+        .insp-tile {
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 6px;
+            padding: 6px 8px;
+        }
+
+        .insp-tile .k {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .insp-tile .v {
+            font-size: 13px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-main);
+            margin-top: 2px;
+        }
+
+        /* Alerts Feed */
+        .alerts-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 230px;
             overflow-y: auto;
         }
 
         .alert-item {
-            background: rgba(15, 23, 42, 0.8);
-            border-left: 4px solid var(--accent-red);
-            border-radius: 8px;
-            padding: 12px 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .alert-item.sev-critical { border-left-color: var(--accent-red); }
-        .alert-item.sev-high { border-left-color: var(--accent-orange); }
-        .alert-item.sev-medium { border-left-color: var(--accent-yellow); }
-        .alert-item.sev-low { border-left-color: var(--primary); }
-
-        .alert-header {
+            background: var(--bg-input);
+            border-left: 3px solid var(--accent-amber);
+            border-radius: 6px;
+            padding: 8px 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-
-        .alert-type {
-            font-weight: 700;
-            font-size: 13px;
-        }
-
-        .badge {
-            font-size: 10px;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 12px;
-            text-transform: uppercase;
-        }
-
-        .badge-critical { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
-        .badge-high { background: rgba(249, 115, 22, 0.2); color: var(--accent-orange); }
-        .badge-medium { background: rgba(234, 179, 8, 0.2); color: var(--accent-yellow); }
-        .badge-low { background: rgba(56, 189, 248, 0.2); color: var(--primary); }
-
-        .alert-desc {
-            font-size: 12px;
-            color: var(--text-sub);
-        }
-
-        /* Console Section */
-        .console-card {
-            margin-top: 24px;
-        }
-
-        .console-input-group {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        .console-input-group input {
-            flex: 1;
-            background: rgba(15, 23, 42, 0.9);
-            color: var(--text-main);
-            padding: 10px 14px;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .quick-cmds {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-bottom: 12px;
-        }
-
-        .quick-cmd-btn {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-sub);
-            padding: 5px 10px;
             font-size: 11px;
-            border-radius: 6px;
-            border: 1px solid var(--border-card);
-            box-shadow: none;
+            transition: transform 0.15s ease;
         }
 
-        .quick-cmd-btn:hover {
-            color: var(--text-main);
-            background: rgba(255, 255, 255, 0.1);
+        .alert-item.critical {
+            border-left-color: var(--accent-red);
+            background: rgba(239, 68, 68, 0.08);
         }
 
-        .terminal {
-            background: #020617;
+        /* OLED HUD CRT Screen (Clean & compact) */
+        .oled-wrapper {
+            background: #020408;
             border: 1px solid var(--border-card);
             border-radius: 10px;
-            padding: 14px;
-            height: 200px;
+            padding: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .oled-screen-container {
+            position: relative;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #03080d;
+        }
+
+        #oledCanvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        .oled-scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(255, 255, 255, 0) 0px,
+                rgba(255, 255, 255, 0) 2px,
+                rgba(0, 0, 0, 0.35) 3px,
+                rgba(0, 0, 0, 0.35) 4px
+            );
+            pointer-events: none;
+        }
+
+        /* Collapsible Diagnostic Console Drawer */
+        .console-drawer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #050812;
+            border-top: 1px solid var(--border-subtle);
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            transform: translateY(100%);
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 12px 20px;
+        }
+
+        .console-drawer.open {
+            transform: translateY(0);
+        }
+
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .terminal-output {
+            height: 150px;
             overflow-y: auto;
+            color: #38bdf8;
+            font-size: 11px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-family: 'JetBrains Mono', monospace;
+            background: #02050b;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-card);
+        }
+
+        .cli-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .cli-row input {
+            flex: 1;
             font-family: 'JetBrains Mono', monospace;
             font-size: 12px;
-            color: #38bdf8;
-            line-height: 1.5;
+        }
+
+        /* Settings Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background: #0c1220;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-card);
+            padding: 20px;
+            width: 440px;
+            max-width: 90%;
+            box-shadow: var(--shadow-card);
         }
     </style>
 </head>
 <body>
 
-    <!-- Header Navigation -->
+    <!-- Top Command Header -->
     <header>
         <div class="brand">
             <div class="brand-icon">🛡️</div>
             <div class="brand-text">
-                <h1>ESP32 IoT Firewall</h1>
-                <p>Web Serial API WIDS Dashboard</p>
+                <h1>ESP32 SENTINEL <span class="badge badge-trusted">v0.4.0 C2</span></h1>
+                <p>Airborne 802.11 Intrusion Detection & Zero-Trust Airspace Defense</p>
             </div>
         </div>
 
-        <div class="controls">
+        <!-- Live Header Telemetry Badges -->
+        <div class="header-telemetry">
+            <div class="telem-pill">CH: <strong id="telemChannel">06</strong></div>
+            <span class="telem-divider">|</span>
+            <div class="telem-pill">PPS: <strong id="telemPps">0</strong></div>
+            <span class="telem-divider">|</span>
+            <div class="telem-pill">HEAP: <strong id="telemHeap">182 KB</strong></div>
+            <span class="telem-divider">|</span>
+            <div class="telem-pill">UPTIME: <strong id="telemUptime">00:00</strong></div>
+            <span class="telem-divider">|</span>
+            <div class="telem-pill" style="color: var(--accent-green);">BLK: <strong id="telemBlocked">0 🛡️</strong></div>
+        </div>
+
+        <!-- Header Actions -->
+        <div class="header-actions">
             <div id="statusPill" class="status-pill">
                 <span class="status-dot"></span>
                 <span id="statusText">Disconnected</span>
             </div>
 
-            <select id="baudRate">
-                <option value="115200" selected>115200 Baud</option>
-                <option value="9600">9600 Baud</option>
-                <option value="921600">921600 Baud</option>
-            </select>
+            <button id="connectBtn" title="Connect directly to ESP32 via USB Serial @ 115200 baud">
+                🔌 Connect Serial
+            </button>
 
-            <button id="connectBtn">Connect Serial Port</button>
-            <button id="pauseBtn" class="btn-secondary" disabled>Pause Stream</button>
-            <button id="clearBtn" class="btn-secondary">Clear Data</button>
+            <button id="consoleToggleBtn" class="btn-secondary" title="Open Sentinel Diagnostic CLI Terminal">
+                💻 CLI
+            </button>
+
+            <button id="soundToggleBtn" class="btn-secondary" title="Toggle audible threat alarm sirens">
+                🔊
+            </button>
+
+            <button id="settingsBtn" class="btn-secondary" title="System Settings & Cloud Sync">
+                ⚙️
+            </button>
         </div>
     </header>
 
-    <!-- Metrics Summary Grid -->
-    <div class="metrics-grid">
-        <div class="metric-card alert-card">
-            <div class="title">Active Security Alerts</div>
-            <div id="alertCount" class="value">0</div>
+    <!-- Unified Clean Defense & Drill Control Bar -->
+    <div class="c2-command-strip">
+        <div class="mode-cluster">
+            <span class="mode-label">Mode:</span>
+            <div class="segmented-mode-selector">
+                <button id="modeSentry" class="mode-btn sentry active" title="Passive 360° Promiscuous Monitoring">
+                    🛡️ SENTRY
+                </button>
+                <button id="modeShield" class="mode-btn shield" title="Strict Zero-Trust with Auto-Mitigation">
+                    ⚔️ SHIELD
+                </button>
+                <button id="modeLockdown" class="mode-btn lockdown" title="Focused Defense on Single Channel">
+                    🔒 LOCKDOWN
+                </button>
+            </div>
+
+            <!-- Channel selector (only visible during lockdown) -->
+            <div id="channelLockRow" style="display: none; align-items: center; gap: 6px;">
+                <span style="font-size: 11px; color: var(--text-muted);">Defend:</span>
+                <select id="targetChannel" style="padding: 4px 8px; font-weight: 700;">
+                    <option value="1">CH 01</option>
+                    <option value="2">CH 02</option>
+                    <option value="3">CH 03</option>
+                    <option value="4">CH 04</option>
+                    <option value="5">CH 05</option>
+                    <option value="6" selected>CH 06</option>
+                    <option value="7">CH 07</option>
+                    <option value="8">CH 08</option>
+                    <option value="9">CH 09</option>
+                    <option value="10">CH 10</option>
+                    <option value="11">CH 11</option>
+                    <option value="12">CH 12</option>
+                    <option value="13">CH 13</option>
+                </select>
+            </div>
         </div>
-        <div class="metric-card device-card">
-            <div class="title">Tracked Devices</div>
-            <div id="deviceCount" class="value">0</div>
-        </div>
-        <div class="metric-card ap-card">
-            <div class="title">Active Access Points</div>
-            <div id="apCount" class="value">0</div>
-        </div>
-        <div class="metric-card stream-card">
-            <div class="title">Stream Packets Read</div>
-            <div id="streamCount" class="value">0</div>
+
+        <div class="drill-cluster">
+            <span class="mode-label">Drill:</span>
+            <select id="drillSelect" class="drill-select">
+                <option value="drill">🚨 Multi-Vector Defense Drill (All Vectors)</option>
+                <option value="eapol">🔑 WPA Handshake Harvesting (EAPOL / KRACK)</option>
+                <option value="jam">📡 RF Continuous Jamming (Retry Anomaly)</option>
+                <option value="seq">🎯 Sequence Gap Anomaly (MAC Spoofing)</option>
+                <option value="karma">😈 Karma / MANA Multi-SSID Rogue AP</option>
+                <option value="deauth">💥 Deauth Flood Jammer (60 Frames)</option>
+                <option value="eviltwin">👥 Evil Twin AP Clone Injection</option>
+                <option value="beacon">📡 Rogue Beacon Flood (120 SSIDs)</option>
+                <option value="probe">🔍 Probe Request Sweep</option>
+                <option value="policy">🚫 Rogue Station Zero-Trust Breach</option>
+                <option value="actuator">⚡ Test Physical Actuators (LED/Buzzer/Relay)</option>
+            </select>
+            <button id="executeDrillBtn" class="btn-amber" title="Execute selected synthetic attack simulation">
+                ▶ Run Drill
+            </button>
         </div>
     </div>
 
-    <!-- Main Dashboard Grid -->
+    <!-- Compact Hardware Actuator Strip -->
+    <div class="hardware-strip">
+        <div class="hw-item">
+            <div id="hwLedDot" class="hw-dot active"></div>
+            <span>LED (GPIO 2): <strong id="hwLedText" style="color: var(--text-main);">Heartbeat (2s)</strong></span>
+        </div>
+        <div class="hw-item">
+            <div id="hwBuzzerDot" class="hw-dot"></div>
+            <span>Buzzer (GPIO 4): <strong id="hwBuzzerText" style="color: var(--text-main);">Silent / Armed</strong></span>
+        </div>
+        <div class="hw-item">
+            <div id="hwRelayDot" class="hw-dot"></div>
+            <span>Relay (GPIO 5): <strong id="hwRelayText" style="color: var(--text-main);">Normal / Armed</strong></span>
+        </div>
+        <div class="hw-item">
+            <span>Quarantined Airspace: <strong id="blacklistCount" style="color: var(--accent-red);">0</strong> MACs</span>
+        </div>
+    </div>
+
+    <!-- Main Workspace Grid -->
     <div class="dashboard-grid">
-        
-        <!-- Live Security Alerts Feed -->
+
+        <!-- LEFT COLUMN: Airspace Radar & Spectrum Heatmap -->
         <div class="card">
-            <div class="card-header">
-                <div class="card-title">⚡ Live Security Threat Alerts</div>
-            </div>
-            <div id="alertFeed" class="alert-feed">
-                <div style="color: var(--text-sub); font-size: 13px; text-align: center; padding: 40px 0;">
-                    No security threats detected yet. Connect serial port to begin live monitoring.
+            <!-- Tabs & Filter Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div class="radar-tabs">
+                    <button id="tabAll" class="radar-tab active" onclick="setRadarTab('all')">All Airspace (<span id="totalEntitiesCount">0</span>)</button>
+                    <button id="tabStas" class="radar-tab" onclick="setRadarTab('stas')">Clients / STAs (<span id="staCount">0</span>)</button>
+                    <button id="tabAps" class="radar-tab" onclick="setRadarTab('aps')">Access Points (<span id="apCount">0</span>)</button>
+                    <button id="tabBlacklist" class="radar-tab" onclick="setRadarTab('quarantine')">Quarantined (<span id="quarantineCount">0</span>)</button>
+                </div>
+
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="entitySearch" placeholder="Search MAC, SSID, Vendor..." style="width: 170px; padding: 4px 8px;">
+                    <button id="trustAllBtn" class="btn-secondary" style="font-size: 11px; padding: 4px 8px;" title="Trust all currently discovered stations">
+                        🛡️ Trust All
+                    </button>
                 </div>
             </div>
-        </div>
 
-        <!-- Tracked Devices Table -->
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">📱 Tracked Client Devices</div>
-            </div>
+            <!-- Unified Airspace Table -->
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>MAC Address</th>
-                            <th>RSSI</th>
+                            <th>Entity Identifier</th>
+                            <th>Type</th>
+                            <th>Trust</th>
+                            <th>CH</th>
+                            <th>Signal</th>
                             <th>Packets</th>
                         </tr>
                     </thead>
-                    <tbody id="deviceTableBody">
-                        <tr><td colspan="4" style="text-align: center; color: var(--text-sub);">No devices discovered</td></tr>
+                    <tbody id="airspaceTableBody">
+                        <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Scanning 2.4 GHz airspace...</td></tr>
                     </tbody>
                 </table>
             </div>
+
+            <!-- 13-Channel RF Spectrum Occupancy Visualizer -->
+            <div class="spectrum-card">
+                <div class="spectrum-header">
+                    <span>📡 2.4 GHz Channel Activity Spectrum</span>
+                    <span id="activeChannelIndicator" style="color: var(--primary);">Channel Hopping: 1-13</span>
+                </div>
+                <div class="spectrum-bars" id="spectrumBars">
+                    <!-- 13 Channel Bars Generated Dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Inspector + Threat Radar + Cyber HUD -->
+        <div class="right-column">
+
+            <!-- Station & AP Master Inspector -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🔍 Airspace Inspector</div>
+                    <span id="inspectorBadge" class="badge badge-untrusted">Select Entity</span>
+                </div>
+
+                <div id="inspectorEmptyState" style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 20px 10px;">
+                    Click any station or access point in the airspace radar to inspect trust score, RF signal, and toggle quarantine.
+                </div>
+
+                <div id="inspectorDetails" class="inspector-panel" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <div id="inspMac" style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--primary);">00:00:00:00:00:00</div>
+                            <div id="inspVendor" style="font-size: 11px; color: var(--text-sub); margin-top: 2px;">Resolving OUI...</div>
+                        </div>
+                        <div id="inspTrustBadge"></div>
+                    </div>
+
+                    <div class="inspector-grid">
+                        <div class="insp-tile">
+                            <div class="k">Channel</div>
+                            <div id="inspChannel" class="v">CH 06</div>
+                        </div>
+                        <div class="insp-tile">
+                            <div class="k">Signal</div>
+                            <div id="inspRssi" class="v">-70 dBm</div>
+                        </div>
+                        <div class="insp-tile">
+                            <div class="k">Packets</div>
+                            <div id="inspPackets" class="v">0</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 8px;">
+                        <button id="inspTrustBtn" class="btn-secondary" style="flex: 1; justify-content: center;">
+                            🛡️ Trust
+                        </button>
+                        <button id="inspBlockBtn" class="btn-danger" style="flex: 1; justify-content: center;">
+                            🚫 Quarantine
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-Time Threat Radar & Alerts Feed -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🚨 Threat Radar (<span id="alertCount">0</span>)</div>
+                    <button id="clearAlertsBtn" class="btn-secondary" style="font-size: 10px; padding: 2px 6px;">Clear Feed</button>
+                </div>
+
+                <div class="alerts-feed" id="alertsFeed">
+                    <div style="text-align: center; color: var(--text-muted); font-size: 11px; padding: 20px;">
+                        Airspace secure. Zero jamming, deauth, or Evil Twin attacks detected.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Virtual OLED Screen HUD -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📟 Cyber-Sentinel HUD Screen</div>
+                    <button id="oledTintBtn" class="btn-secondary" style="font-size: 10px; padding: 2px 6px;">🎨 Tint: Emerald</button>
+                </div>
+
+                <div class="oled-wrapper">
+                    <div class="oled-screen-container">
+                        <canvas id="oledCanvas" width="384" height="150"></canvas>
+                        <div class="oled-scanlines"></div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
     </div>
 
-    <!-- Access Points Table -->
-    <div class="card" style="margin-bottom: 24px;">
-        <div class="card-header">
-            <div class="card-title">📡 Active Access Points (APs)</div>
+    <!-- Collapsible Diagnostic Console Drawer -->
+    <div id="consoleDrawer" class="console-drawer">
+        <div class="console-header">
+            <span style="font-size: 12px; font-weight: 700; color: #ffffff;">💻 Sentinel Diagnostic Console & Serial Interface</span>
+            <div style="display: flex; gap: 6px;">
+                <button id="clearConsoleBtn" class="btn-secondary" style="font-size: 10px; padding: 2px 6px;">Clear</button>
+                <button id="closeConsoleBtn" class="btn-secondary" style="font-size: 10px; padding: 2px 6px;">✕ Close</button>
+            </div>
         </div>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>BSSID</th>
-                        <th>SSID</th>
-                        <th>CH</th>
-                        <th>RSSI</th>
-                        <th>Beacons</th>
-                    </tr>
-                </thead>
-                <tbody id="apTableBody">
-                    <tr><td colspan="6" style="text-align: center; color: var(--text-sub);">No Access Points discovered</td></tr>
-                </tbody>
-            </table>
+        <div id="terminalOutput" class="terminal-output">ESP32 IoT Firewall Sentinel C2 initialized. Plug in ESP32 and click "Connect Serial".</div>
+        <div class="cli-row">
+            <input type="text" id="cliInput" placeholder="Send serial command ('help', 'status', 'health', 'devices', 'sim drill')..." autocomplete="off">
+            <button id="cliSendBtn" class="btn-secondary">Send</button>
         </div>
     </div>
 
-    <!-- Interactive Serial Console Drawer -->
-    <div class="card console-card">
-        <div class="card-header">
-            <div class="card-title">💻 Interactive Serial CLI Console</div>
-        </div>
+    <!-- Settings & Cloud Sync Modal -->
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <h2 style="font-size: 14px; font-weight: 800; color: #ffffff;">⚙️ Sentinel Options & Controls</h2>
+                <button id="closeSettingsBtn" class="btn-secondary" style="padding: 2px 6px;">✕</button>
+            </div>
 
-        <div class="quick-cmds">
-            <button class="quick-cmd-btn" onclick="sendQuickCmd('help')">help</button>
-            <button class="quick-cmd-btn" onclick="sendQuickCmd('list devices')">list devices</button>
-            <button class="quick-cmd-btn" onclick="sendQuickCmd('list aps')">list aps</button>
-            <button class="quick-cmd-btn" onclick="sendQuickCmd('list alerts')">list alerts</button>
-            <button class="quick-cmd-btn" onclick="sendQuickCmd('logs dump')">logs dump</button>
-            <button class="quick-cmd-btn" onclick="sendQuickCmd('whitelist list')">whitelist list</button>
-            <button class="quick-cmd-btn" onclick="sendQuickCmd('config list')">config list</button>
-        </div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Cloud Relay WebSocket -->
+                <div>
+                    <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Cloud / On-Board Relay Sync (WebSocket)</label>
+                    <div style="display: flex; gap: 8px; margin-top: 4px;">
+                        <input type="text" id="cloudWsInput" placeholder="ws://localhost:8765" value="ws://localhost:8765" style="flex: 1;">
+                        <button id="cloudConnectBtn" class="btn-secondary">Sync</button>
+                    </div>
+                </div>
 
-        <div class="console-input-group">
-            <input type="text" id="cmdInput" placeholder="Type CLI command (e.g. config set deauthThreshold 20)..." onkeypress="if(event.key==='Enter') sendConsoleCmd()">
-            <button id="sendBtn" onclick="sendConsoleCmd()">Send Command</button>
-        </div>
+                <!-- Hardware Reboot -->
+                <div>
+                    <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Hardware Maintenance</label>
+                    <div style="display: flex; gap: 8px; margin-top: 4px;">
+                        <button id="rebootBtn" class="btn-secondary" style="flex: 1;">⚡ Hardware Reset (EN)</button>
+                        <button id="demoBtn" class="btn-secondary" style="flex: 1;">🎮 Toggle Offline Demo</button>
+                    </div>
+                </div>
 
-        <div id="terminal" class="terminal">ESP32 WIDS Web Serial Console ready. Click 'Connect Serial Port' to link board.</div>
+                <!-- Wipe Data -->
+                <div>
+                    <button id="clearDataBtn" class="btn-danger" style="width: 100%; justify-content: center;">
+                        🗑️ Reset All Local Cache & History
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Web Serial API Application Logic -->
     <script>
+        /* =========================================================
+           ESP32 IoT Sentinel & WIDS C2 Dashboard Logic
+        ========================================================= */
+
+        // Serial & Network State
         let port = null;
         let reader = null;
         let writer = null;
         let isConnected = false;
-        let isPaused = false;
+        let isDemoMode = false;
+        let demoInterval = null;
+        let audioMuted = false;
+        let cloudWs = null;
+        let isCloudSyncConnected = false;
 
+        // Unified Defense Mode: 'sentry' | 'shield' | 'lockdown'
+        let currentDefenseMode = 'sentry';
+        let currentRadarTab = 'all'; // 'all' | 'stas' | 'aps' | 'quarantine'
+
+        // Telemetry Data Stores
         let totalStreamPackets = 0;
         const devices = new Map();
         const accessPoints = new Map();
         const alerts = [];
+        const whitelistedMacs = new Set();
+        const blacklistedMacs = new Map();
+        let blockedAttacksCount = 0;
+        let selectedEntityId = null; // MAC or BSSID
 
-        const connectBtn = document.getElementById('connectBtn');
-        const pauseBtn = document.getElementById('pauseBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const statusPill = document.getElementById('statusPill');
-        const statusText = document.getElementById('statusText');
-        const terminal = document.getElementById('terminal');
+        // Channel stats for 13-channel spectrum
+        const channelPackets = new Array(14).fill(0);
 
-        // Check Web Serial API Browser Support
-        if (!('serial' in navigator)) {
-            alert('Web Serial API is not supported in this browser. Please use Chrome, Edge, or Opera.');
+        // OLED HUD Canvas State
+        let oledColorTheme = 'emerald'; // 'emerald' | 'cyan' | 'amber'
+        let oledLines = [
+            "[SHIELD:SENTRY] CH:06",
+            "PPS: 142 | RSSI:-64dB",
+            "THREAT: NOMINAL",
+            "PERIMETER SECURE",
+            "STATUS: PATROL",
+            "BLK: 0 | DEV: 0"
+        ];
+
+        // Web Audio Synthesizer
+        let audioCtx = null;
+        function playAlertTone(severity) {
+            if (audioMuted) return;
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (severity === 'Critical') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(880, now);
+                    osc.frequency.linearRampToValueAtTime(1320, now + 0.15);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                } else {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(987.77, now);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                }
+            } catch (e) {}
         }
 
+        // DOM Elements
+        const connectBtn = document.getElementById('connectBtn');
+        const statusPill = document.getElementById('statusPill');
+        const statusText = document.getElementById('statusText');
+        const soundToggleBtn = document.getElementById('soundToggleBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+
+        const consoleToggleBtn = document.getElementById('consoleToggleBtn');
+        const consoleDrawer = document.getElementById('consoleDrawer');
+        const closeConsoleBtn = document.getElementById('closeConsoleBtn');
+        const terminalOutput = document.getElementById('terminalOutput');
+        const cliInput = document.getElementById('cliInput');
+        const cliSendBtn = document.getElementById('cliSendBtn');
+        const clearConsoleBtn = document.getElementById('clearConsoleBtn');
+
+        const modeSentry = document.getElementById('modeSentry');
+        const modeShield = document.getElementById('modeShield');
+        const modeLockdown = document.getElementById('modeLockdown');
+        const channelLockRow = document.getElementById('channelLockRow');
+        const targetChannel = document.getElementById('targetChannel');
+
+        const drillSelect = document.getElementById('drillSelect');
+        const executeDrillBtn = document.getElementById('executeDrillBtn');
+
+        // Console Drawer Handlers
+        consoleToggleBtn.addEventListener('click', () => consoleDrawer.classList.toggle('open'));
+        closeConsoleBtn.addEventListener('click', () => consoleDrawer.classList.remove('open'));
+
+        // Sound Toggle
+        soundToggleBtn.addEventListener('click', () => {
+            audioMuted = !audioMuted;
+            soundToggleBtn.textContent = audioMuted ? '🔇' : '🔊';
+            soundToggleBtn.classList.toggle('btn-danger', audioMuted);
+        });
+
+        // Settings Modal Handlers
+        settingsBtn.addEventListener('click', () => settingsModal.classList.add('open'));
+        closeSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('open'));
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) settingsModal.classList.remove('open');
+        });
+
+        // Serial Command Transmitter
+        async function sendCommand(cmd) {
+            if (!cmd) return;
+            appendConsole('> ' + cmd);
+
+            if (isCloudSyncConnected && cloudWs && cloudWs.readyState === WebSocket.OPEN) {
+                try { cloudWs.send(JSON.stringify({ type: 'command', command: cmd })); } catch (e) {}
+                return;
+            }
+
+            if (isConnected && writer) {
+                try {
+                    const encoder = new TextEncoder();
+                    await writer.write(encoder.encode(cmd + '\n'));
+                } catch (e) {
+                    appendConsole('Serial write error: ' + e.message);
+                }
+                return;
+            }
+
+            if (isDemoMode) {
+                handleDemoCommand(cmd);
+                return;
+            }
+
+            appendConsole('Notice: Device not connected. Click "Connect Serial" first.');
+        }
+
+        // Master Defense Mode Switcher
+        function setDefenseMode(mode) {
+            currentDefenseMode = mode;
+            [modeSentry, modeShield, modeLockdown].forEach(btn => btn.classList.remove('active'));
+
+            if (mode === 'sentry') {
+                modeSentry.classList.add('active');
+                channelLockRow.style.display = 'none';
+                document.getElementById('activeChannelIndicator').textContent = 'Channel Hopping: 1-13';
+                sendCommand('defense off');
+                sendCommand('policy strict off');
+                sendCommand('channel auto');
+                notifyOledMode('[SHIELD:SENTRY]');
+            } else if (mode === 'shield') {
+                modeShield.classList.add('active');
+                channelLockRow.style.display = 'none';
+                document.getElementById('activeChannelIndicator').textContent = 'Channel Hopping: 1-13 (Active Shield)';
+                sendCommand('defense on');
+                sendCommand('policy strict on');
+                sendCommand('channel auto');
+                notifyOledMode('[SHIELD:ACTIVE]');
+            } else if (mode === 'lockdown') {
+                modeLockdown.classList.add('active');
+                channelLockRow.style.display = 'flex';
+                const ch = targetChannel.value;
+                document.getElementById('activeChannelIndicator').textContent = `Defending CH ${ch.padStart(2, '0')} (Lockdown)`;
+                sendCommand('defense on');
+                sendCommand(`channel lock ${ch}`);
+                notifyOledMode(`[LOCK:CH${ch.padStart(2, '0')}]`);
+            }
+            renderSpectrumBars();
+            renderOledScreen();
+        }
+
+        modeSentry.addEventListener('click', () => setDefenseMode('sentry'));
+        modeShield.addEventListener('click', () => setDefenseMode('shield'));
+        modeLockdown.addEventListener('click', () => setDefenseMode('lockdown'));
+
+        targetChannel.addEventListener('change', () => {
+            if (currentDefenseMode === 'lockdown') {
+                const ch = targetChannel.value;
+                document.getElementById('activeChannelIndicator').textContent = `Defending CH ${ch.padStart(2, '0')} (Lockdown)`;
+                sendCommand(`channel lock ${ch}`);
+                notifyOledMode(`[LOCK:CH${ch.padStart(2, '0')}]`);
+                renderSpectrumBars();
+                renderOledScreen();
+            }
+        });
+
+        // Unified Drill Execution
+        executeDrillBtn.addEventListener('click', () => {
+            const val = drillSelect.value;
+            if (val === 'drill') sendCommand('sim drill');
+            else if (val === 'eapol') sendCommand('sim eapol');
+            else if (val === 'jam') sendCommand('sim jam');
+            else if (val === 'seq') sendCommand('sim seq');
+            else if (val === 'karma') sendCommand('sim karma');
+            else if (val === 'deauth') sendCommand('sim deauth 60');
+            else if (val === 'eviltwin') sendCommand('sim eviltwin Sentinel_AP');
+            else if (val === 'beacon') sendCommand('sim beacon 120');
+            else if (val === 'probe') sendCommand('sim probe');
+            else if (val === 'policy') sendCommand('sim policy');
+            else if (val === 'actuator') sendCommand('actuator test 3000');
+        });
+
+        // Web Serial API Pipeline
         connectBtn.addEventListener('click', async () => {
             if (isConnected) {
                 await disconnectSerial();
             } else {
+                if (isDemoMode) stopDemoMode();
+                if (isCloudSyncConnected) disconnectCloudSync();
                 await connectSerial();
             }
         });
 
-        pauseBtn.addEventListener('click', () => {
-            isPaused = !isPaused;
-            pauseBtn.textContent = isPaused ? 'Resume Stream' : 'Pause Stream';
-        });
-
-        clearBtn.addEventListener('click', () => {
-            devices.clear();
-            accessPoints.clear();
-            alerts.length = 0;
-            totalStreamPackets = 0;
-            updateUI();
-            terminal.innerHTML = 'Stream cleared.';
-        });
-
         async function connectSerial() {
+            if (!('serial' in navigator)) {
+                alert('Web Serial API is not supported in this browser. Please use Chrome or Edge.');
+                return;
+            }
+
             try {
-                const baud = parseInt(document.getElementById('baudRate').value);
                 port = await navigator.serial.requestPort();
-                await port.open({ baudRate: baud });
+                await port.open({ baudRate: 115200 });
 
                 isConnected = true;
-                connectBtn.textContent = 'Disconnect Port';
-                pauseBtn.disabled = false;
-                statusPill.classList.add('connected');
-                statusText.textContent = 'Connected';
-                appendTerminalLine('--- Connected to Serial Port at ' + baud + ' baud ---');
+                connectBtn.textContent = 'Disconnect';
+                connectBtn.classList.add('btn-danger');
+                statusPill.className = 'status-pill connected';
+                statusText.textContent = 'Serial Live';
+                appendConsole('--- Connected to ESP32 Serial Port (115200 Baud) ---');
 
+                // Clear bootloader RTS/DTR hold
+                try {
+                    await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+                    await new Promise(r => setTimeout(r, 50));
+                    await port.setSignals({ dataTerminalReady: false, requestToSend: true });
+                    await new Promise(r => setTimeout(r, 120));
+                    await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+                } catch (e) {}
+
+                writer = port.writable.getWriter();
                 readSerialLoop();
             } catch (err) {
-                console.error(err);
-                appendTerminalLine('Connection Error: ' + err.message);
+                appendConsole('Connection notice: ' + err.message);
             }
         }
 
         async function disconnectSerial() {
-            if (reader) {
-                await reader.cancel();
-            }
-            if (port) {
-                await port.close();
-            }
             isConnected = false;
-            connectBtn.textContent = 'Connect Serial Port';
-            pauseBtn.disabled = true;
-            statusPill.classList.remove('connected');
+            try {
+                if (reader) {
+                    await reader.cancel();
+                    try { reader.releaseLock(); } catch(e) {}
+                    reader = null;
+                }
+                if (writer) {
+                    try { await writer.abort(); } catch(e) {}
+                    try { writer.releaseLock(); } catch(e) {}
+                    writer = null;
+                }
+                if (port) {
+                    await port.close();
+                    port = null;
+                }
+            } catch (e) {}
+
+            connectBtn.textContent = '🔌 Connect Serial';
+            connectBtn.classList.remove('btn-danger');
+            statusPill.className = 'status-pill';
             statusText.textContent = 'Disconnected';
-            appendTerminalLine('--- Disconnected from Serial Port ---');
+            appendConsole('--- Disconnected from Serial Port ---');
         }
 
         async function readSerialLoop() {
-            const textDecoder = new TextDecoderStream();
-            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
-            reader = textDecoder.readable.getReader();
-
             let buffer = '';
-
             try {
+                reader = port.readable.getReader();
+                const decoder = new TextDecoder();
                 while (isConnected) {
                     const { value, done } = await reader.read();
                     if (done) break;
                     if (value) {
-                        buffer += value;
+                        buffer += decoder.decode(value, { stream: true });
                         const lines = buffer.split('\n');
-                        buffer = lines.pop(); // keep partial trailing line
+                        buffer = lines.pop();
 
                         for (const line of lines) {
                             processLine(line.trim());
@@ -628,150 +1496,722 @@
                     }
                 }
             } catch (err) {
-                console.error('Serial read loop error:', err);
+                console.error('Serial read loop ended:', err);
             } finally {
-                reader.releaseLock();
+                if (reader) {
+                    try { reader.releaseLock(); } catch(e) {}
+                    reader = null;
+                }
+            }
+        }
+
+        // Reboot / Reset EN
+        document.getElementById('rebootBtn').addEventListener('click', async () => {
+            if (!port) {
+                appendConsole('Serial port not open. Click "Connect Serial" first.');
+                return;
+            }
+            appendConsole('⚡ Sending hardware reset pulse (EN)...');
+            try {
+                await port.setSignals({ dataTerminalReady: false, requestToSend: true });
+                await new Promise(r => setTimeout(r, 120));
+                await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+                appendConsole('⚡ ESP32 rebooted. Firmware initializing...');
+            } catch (err) {
+                appendConsole('Reboot signal notice: ' + err.message);
+            }
+        });
+
+        // Diagnostic Console Logger
+        let consoleLineCount = 0;
+        function appendConsole(text) {
+            if (!text) return;
+            terminalOutput.textContent += text + '\n';
+            consoleLineCount++;
+            if (consoleLineCount > 150) {
+                const lines = terminalOutput.textContent.split('\n');
+                terminalOutput.textContent = lines.slice(-100).join('\n') + '\n';
+                consoleLineCount = 100;
+            }
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        clearConsoleBtn.addEventListener('click', () => {
+            terminalOutput.textContent = '';
+            consoleLineCount = 0;
+        });
+
+        // Stream Protocol Engine
+        let renderScheduled = false;
+        function scheduleRender() {
+            if (!renderScheduled) {
+                renderScheduled = true;
+                requestAnimationFrame(() => {
+                    renderAirspaceTable();
+                    renderSpectrumBars();
+                    renderScheduled = false;
+                });
             }
         }
 
         function processLine(line) {
             if (!line) return;
-            appendTerminalLine(line);
 
-            if (isPaused) return;
+            // Forward non-stream lines to CLI
+            if (!line.startsWith('[STREAM:DEVICE]') && 
+                !line.startsWith('[STREAM:AP]') && 
+                !line.startsWith('[STREAM:STATS]')) {
+                appendConsole(line);
+            }
 
             totalStreamPackets++;
-            document.getElementById('streamCount').textContent = totalStreamPackets;
 
-            // 1. Process Device Updates: [STREAM:DEVICE] {JSON}
+            // 1. Process Device: [STREAM:DEVICE] {JSON}
             if (line.startsWith('[STREAM:DEVICE]')) {
                 try {
-                    const jsonStr = line.replace('[STREAM:DEVICE]', '').trim();
-                    const dev = JSON.parse(jsonStr);
-                    devices.set(dev.id, dev);
-                    renderDevicesTable();
+                    const dev = JSON.parse(line.replace('[STREAM:DEVICE]', '').trim());
+                    devices.set(dev.mac, dev);
+                    if (dev.channel >= 1 && dev.channel <= 13) {
+                        channelPackets[dev.channel] = (channelPackets[dev.channel] || 0) + 1;
+                    }
+                    scheduleRender();
+                    if (selectedEntityId === dev.mac) updateInspector();
                 } catch (e) {}
             }
-            // 2. Process AP Updates: [STREAM:AP] {JSON}
+            // 2. Process AP: [STREAM:AP] {JSON}
             else if (line.startsWith('[STREAM:AP]')) {
                 try {
-                    const jsonStr = line.replace('[STREAM:AP]', '').trim();
-                    const ap = JSON.parse(jsonStr);
-                    accessPoints.set(ap.id, ap);
-                    renderAPTable();
+                    const ap = JSON.parse(line.replace('[STREAM:AP]', '').trim());
+                    accessPoints.set(ap.bssid, ap);
+                    if (ap.channel >= 1 && ap.channel <= 13) {
+                        channelPackets[ap.channel] = (channelPackets[ap.channel] || 0) + 2;
+                    }
+                    scheduleRender();
+                    if (selectedEntityId === ap.bssid) updateInspector();
                 } catch (e) {}
             }
-            // 3. Process Security Alerts: [STREAM:ALERT] {JSON}
+            // 3. Process Stats Telemetry: [STREAM:STATS] {JSON}
+            else if (line.startsWith('[STREAM:STATS]')) {
+                try {
+                    const s = JSON.parse(line.replace('[STREAM:STATS]', '').trim());
+                    if (s.pps !== undefined) document.getElementById('telemPps').textContent = s.pps;
+                    if (s.channel !== undefined) {
+                        document.getElementById('telemChannel').textContent = s.channel.toString().padStart(2, '0');
+                    }
+                    if (s.heap !== undefined) {
+                        document.getElementById('telemHeap').textContent = Math.round(s.heap / 1024) + ' KB';
+                    }
+                    if (s.uptime !== undefined) {
+                        const mins = Math.floor(s.uptime / 60).toString().padStart(2, '0');
+                        const secs = (s.uptime % 60).toString().padStart(2, '0');
+                        document.getElementById('telemUptime').textContent = `${mins}:${secs}`;
+                    }
+                    if (s.blocked !== undefined) {
+                        blockedAttacksCount = s.blocked;
+                        document.getElementById('telemBlocked').textContent = `${blockedAttacksCount} 🛡️`;
+                    }
+                } catch (e) {}
+            }
+            // 4. Process Alerts: [STREAM:ALERT] {JSON}
             else if (line.startsWith('[STREAM:ALERT]')) {
                 try {
-                    const jsonStr = line.replace('[STREAM:ALERT]', '').trim();
-                    const alertObj = JSON.parse(jsonStr);
+                    const alertObj = JSON.parse(line.replace('[STREAM:ALERT]', '').trim());
+                    alertObj.time = new Date().toLocaleTimeString();
                     alerts.unshift(alertObj);
-                    if (alerts.length > 20) alerts.pop();
+                    if (alerts.length > 30) alerts.pop();
                     renderAlertsFeed();
+                    playAlertTone(alertObj.severity || (alertObj.score > 70 ? 'Critical' : 'High'));
+                    triggerHardwareAlarm();
                 } catch (e) {}
             }
-        }
+            // 5. Active Mitigation Logs
+            else if (line.includes('[DEAUTH_DEFENSE]') || line.includes('[FIREWALL ACTIVE DEFENSE]')) {
+                blockedAttacksCount++;
+                document.getElementById('telemBlocked').textContent = `${blockedAttacksCount} 🛡️`;
+                playAlertTone('Critical');
+                triggerHardwareAlarm();
 
-        function renderDevicesTable() {
-            document.getElementById('deviceCount').textContent = devices.size;
-            const tbody = document.getElementById('deviceTableBody');
-            if (devices.size === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-sub);">No devices discovered</td></tr>';
-                return;
+                const macMatch = line.match(/\[([0-9A-F:]{17})\]/i) || line.match(/ATK:([0-9A-F:]{17})/i);
+                if (macMatch) {
+                    const targetMac = macMatch[1].toUpperCase();
+                    blacklistedMacs.set(targetMac, { reason: 'Active Jammer Mitigation', time: new Date().toLocaleTimeString() });
+                    document.getElementById('blacklistCount').textContent = blacklistedMacs.size;
+                    scheduleRender();
+                }
             }
-            let html = '';
-            devices.forEach(dev => {
-                html += `<tr>
-                    <td>${dev.id}</td>
-                    <td>${dev.mac}</td>
-                    <td>${dev.rssi} dBm</td>
-                    <td>${dev.packets}</td>
-                </tr>`;
-            });
-            tbody.innerHTML = html;
         }
 
-        function renderAPTable() {
+        function triggerHardwareAlarm() {
+            const ledDot = document.getElementById('hwLedDot');
+            const buzzerDot = document.getElementById('hwBuzzerDot');
+            const relayDot = document.getElementById('hwRelayDot');
+            const ledText = document.getElementById('hwLedText');
+            const buzzerText = document.getElementById('hwBuzzerText');
+            const relayText = document.getElementById('hwRelayText');
+
+            ledDot.className = 'hw-dot alarm';
+            buzzerDot.className = 'hw-dot alarm';
+            relayDot.className = 'hw-dot alarm';
+            ledText.textContent = 'Emergency Strobe';
+            buzzerText.textContent = 'Siren Active';
+            relayText.textContent = 'TRIGGERED (Cutoff)';
+
+            setTimeout(() => {
+                ledDot.className = 'hw-dot active';
+                buzzerDot.className = 'hw-dot';
+                relayDot.className = 'hw-dot';
+                ledText.textContent = 'Heartbeat (2s)';
+                buzzerText.textContent = 'Silent / Armed';
+                relayText.textContent = 'Normal / Armed';
+            }, 4000);
+        }
+
+        // Radar Filter Tabs
+        window.setRadarTab = function(tab) {
+            currentRadarTab = tab;
+            ['tabAll', 'tabStas', 'tabAps', 'tabBlacklist'].forEach(id => document.getElementById(id).classList.remove('active'));
+            if (tab === 'all') document.getElementById('tabAll').classList.add('active');
+            else if (tab === 'stas') document.getElementById('tabStas').classList.add('active');
+            else if (tab === 'aps') document.getElementById('tabAps').classList.add('active');
+            else if (tab === 'quarantine') document.getElementById('tabBlacklist').classList.add('active');
+            renderAirspaceTable();
+        };
+
+        function renderAirspaceTable() {
+            const tbody = document.getElementById('airspaceTableBody');
+            const searchVal = document.getElementById('entitySearch').value.toUpperCase();
+
+            document.getElementById('totalEntitiesCount').textContent = devices.size + accessPoints.size;
+            document.getElementById('staCount').textContent = devices.size;
             document.getElementById('apCount').textContent = accessPoints.size;
-            const tbody = document.getElementById('apTableBody');
-            if (accessPoints.size === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-sub);">No Access Points discovered</td></tr>';
+            document.getElementById('quarantineCount').textContent = blacklistedMacs.size;
+
+            let rows = [];
+
+            // 1. Process Stations
+            if (currentRadarTab === 'all' || currentRadarTab === 'stas' || currentRadarTab === 'quarantine') {
+                devices.forEach(dev => {
+                    const isBlacklisted = blacklistedMacs.has(dev.mac);
+                    if (currentRadarTab === 'quarantine' && !isBlacklisted) return;
+
+                    const matchSearch = !searchVal || 
+                                       dev.mac.includes(searchVal) || 
+                                       (dev.vendor && dev.vendor.toUpperCase().includes(searchVal));
+                    if (!matchSearch) return;
+
+                    const isWhitelisted = whitelistedMacs.has(dev.mac) || (dev.flags & 1);
+                    const isSelected = (selectedEntityId === dev.mac);
+
+                    let trustScore = dev.trust !== undefined ? dev.trust : (isWhitelisted ? 100 : (isBlacklisted ? 10 : 50));
+                    let trustClass = trustScore >= 75 ? 'trust-high' : (trustScore >= 40 ? 'trust-mid' : 'trust-low');
+
+                    // RSSI percentage
+                    const rssiPercent = Math.min(100, Math.max(10, (dev.rssi + 95) * 1.5));
+
+                    rows.push(`
+                        <tr class="${isSelected ? 'selected' : ''}" onclick="selectEntity('${dev.mac}', 'STA')">
+                            <td><span style="font-family: 'JetBrains Mono'; font-size: 11px; color: var(--text-muted);">${dev.id}</span></td>
+                            <td>
+                                <div style="font-family: 'JetBrains Mono'; font-weight: 600;">${dev.mac}</div>
+                                <div style="font-size: 10px; color: var(--primary);">${dev.vendor || 'Unknown Vendor'}</div>
+                            </td>
+                            <td><span class="badge badge-untrusted">STA</span></td>
+                            <td><span class="trust-pill ${trustClass}">${trustScore}</span></td>
+                            <td><span style="font-family: 'JetBrains Mono';">CH ${dev.channel || 6}</span></td>
+                            <td>
+                                <div class="rssi-pill">
+                                    <span>${dev.rssi}</span>
+                                    <div class="rssi-bar-mini">
+                                        <div class="rssi-fill-mini" style="width: ${rssiPercent}%;"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span style="font-family: 'JetBrains Mono';">${dev.packets || 0}</span></td>
+                        </tr>
+                    `);
+                });
+            }
+
+            // 2. Process Access Points
+            if (currentRadarTab === 'all' || currentRadarTab === 'aps') {
+                accessPoints.forEach(ap => {
+                    const matchSearch = !searchVal || 
+                                       ap.bssid.includes(searchVal) || 
+                                       (ap.ssid && ap.ssid.toUpperCase().includes(searchVal));
+                    if (!matchSearch) return;
+
+                    const isSelected = (selectedEntityId === ap.bssid);
+                    const rssiPercent = Math.min(100, Math.max(10, (ap.rssi + 95) * 1.5));
+
+                    rows.push(`
+                        <tr class="${isSelected ? 'selected' : ''}" onclick="selectEntity('${ap.bssid}', 'AP')">
+                            <td><span style="font-family: 'JetBrains Mono'; font-size: 11px; color: var(--text-muted);">${ap.id}</span></td>
+                            <td>
+                                <div style="font-weight: 700; color: #ffffff;">${ap.ssid || '<Hidden AP>'}</div>
+                                <div style="font-family: 'JetBrains Mono'; font-size: 10px; color: var(--text-muted);">${ap.bssid}</div>
+                            </td>
+                            <td><span class="badge badge-trusted">AP</span></td>
+                            <td><span class="trust-pill trust-high">90</span></td>
+                            <td><span style="font-family: 'JetBrains Mono';">CH ${ap.channel}</span></td>
+                            <td>
+                                <div class="rssi-pill">
+                                    <span>${ap.rssi}</span>
+                                    <div class="rssi-bar-mini">
+                                        <div class="rssi-fill-mini" style="width: ${rssiPercent}%;"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span style="font-family: 'JetBrains Mono';">${ap.beacons || 0}</span></td>
+                        </tr>
+                    `);
+                });
+            }
+
+            if (rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">No matching entities in airspace.</td></tr>';
+            } else {
+                tbody.innerHTML = rows.join('');
+            }
+        }
+
+        // 13-Channel RF Spectrum Visualizer
+        function renderSpectrumBars() {
+            const container = document.getElementById('spectrumBars');
+            let maxPkt = Math.max(1, ...channelPackets.slice(1, 14));
+            let html = '';
+
+            for (let ch = 1; ch <= 13; ch++) {
+                const count = channelPackets[ch] || 0;
+                const heightPct = Math.max(8, Math.round((count / maxPkt) * 100));
+                const isLocked = (currentDefenseMode === 'lockdown' && targetChannel.value == ch);
+
+                html += `
+                    <div class="spectrum-col ${isLocked ? 'locked' : ''}">
+                        <div class="spectrum-bar-wrap">
+                            <div class="spectrum-bar" style="height: ${heightPct}%;"></div>
+                        </div>
+                        <span class="spectrum-label">${ch}</span>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        // Entity Selection & Inspector
+        window.selectEntity = function(id, type) {
+            selectedEntityId = id;
+            scheduleRender();
+            updateInspector();
+        };
+
+        function updateInspector() {
+            const details = document.getElementById('inspectorDetails');
+            const emptyState = document.getElementById('inspectorEmptyState');
+            const badge = document.getElementById('inspectorBadge');
+
+            if (!selectedEntityId) {
+                details.style.display = 'none';
+                emptyState.style.display = 'block';
+                badge.textContent = 'Select Entity';
+                badge.className = 'badge badge-untrusted';
                 return;
             }
-            let html = '';
-            accessPoints.forEach(ap => {
-                html += `<tr>
-                    <td>${ap.id}</td>
-                    <td>${ap.bssid}</td>
-                    <td>${ap.ssid || '<Hidden>'}</td>
-                    <td>${ap.channel}</td>
-                    <td>${ap.rssi} dBm</td>
-                    <td>${ap.beacons}</td>
-                </tr>`;
-            });
-            tbody.innerHTML = html;
+
+            const dev = devices.get(selectedEntityId);
+            const ap = accessPoints.get(selectedEntityId);
+
+            if (!dev && !ap) return;
+
+            details.style.display = 'flex';
+            emptyState.style.display = 'none';
+
+            const trustBtn = document.getElementById('inspTrustBtn');
+            const blockBtn = document.getElementById('inspBlockBtn');
+
+            if (dev) {
+                document.getElementById('inspMac').textContent = dev.mac;
+                document.getElementById('inspVendor').textContent = `OUI: ${dev.vendor || 'Unknown Hardware'}`;
+                document.getElementById('inspChannel').textContent = `CH ${dev.channel || 6}`;
+                document.getElementById('inspRssi').textContent = `${dev.rssi} dBm`;
+                document.getElementById('inspPackets').textContent = dev.packets || 0;
+
+                const isWhitelisted = whitelistedMacs.has(dev.mac) || (dev.flags & 1);
+                const isBlacklisted = blacklistedMacs.has(dev.mac);
+
+                let trust = dev.trust !== undefined ? dev.trust : (isWhitelisted ? 100 : (isBlacklisted ? 10 : 50));
+                badge.textContent = isBlacklisted ? 'Quarantined' : (isWhitelisted ? 'Whitelisted' : 'Station (STA)');
+                badge.className = `badge ${isBlacklisted ? 'badge-blacklisted' : (isWhitelisted ? 'badge-trusted' : 'badge-untrusted')}`;
+
+                document.getElementById('inspTrustBadge').innerHTML = `
+                    <span class="trust-pill ${trust >= 75 ? 'trust-high' : (trust >= 40 ? 'trust-mid' : 'trust-low')}">Trust: ${trust}/100</span>
+                `;
+
+                trustBtn.style.display = 'inline-flex';
+                trustBtn.textContent = isWhitelisted ? '❌ Revoke Trust' : '🛡️ Trust STA';
+                trustBtn.onclick = () => {
+                    if (isWhitelisted) {
+                        whitelistedMacs.delete(dev.mac);
+                        dev.flags &= ~1;
+                        sendCommand(`untrust ${dev.mac}`);
+                    } else {
+                        whitelistedMacs.add(dev.mac);
+                        dev.flags |= 1;
+                        sendCommand(`trust ${dev.mac}`);
+                    }
+                    updateInspector();
+                    scheduleRender();
+                };
+
+                blockBtn.textContent = isBlacklisted ? '✅ Release Quarantine' : '🚫 Quarantine Airtime';
+                blockBtn.className = isBlacklisted ? 'btn-secondary' : 'btn-danger';
+                blockBtn.onclick = () => {
+                    if (isBlacklisted) {
+                        blacklistedMacs.delete(dev.mac);
+                        sendCommand(`unblock ${dev.mac}`);
+                    } else {
+                        blacklistedMacs.set(dev.mac, { reason: 'Operator Quarantine', time: new Date().toLocaleTimeString() });
+                        sendCommand(`block ${dev.mac}`);
+                        playAlertTone('Critical');
+                        triggerHardwareAlarm();
+                    }
+                    document.getElementById('blacklistCount').textContent = blacklistedMacs.size;
+                    updateInspector();
+                    scheduleRender();
+                };
+            } else if (ap) {
+                document.getElementById('inspMac').textContent = ap.bssid;
+                document.getElementById('inspVendor').textContent = `SSID: "${ap.ssid || '<Hidden Network>'}"`;
+                document.getElementById('inspChannel').textContent = `CH ${ap.channel}`;
+                document.getElementById('inspRssi').textContent = `${ap.rssi} dBm`;
+                document.getElementById('inspPackets').textContent = ap.beacons || 0;
+
+                badge.textContent = 'Access Point';
+                badge.className = 'badge badge-trusted';
+                document.getElementById('inspTrustBadge').innerHTML = `<span class="trust-pill trust-high">AP Gateway</span>`;
+                trustBtn.style.display = 'none';
+
+                const isBlacklisted = blacklistedMacs.has(ap.bssid);
+                blockBtn.textContent = isBlacklisted ? '✅ Release BSSID' : '🚫 Block Rogue BSSID';
+                blockBtn.className = isBlacklisted ? 'btn-secondary' : 'btn-danger';
+                blockBtn.onclick = () => {
+                    if (isBlacklisted) {
+                        blacklistedMacs.delete(ap.bssid);
+                        sendCommand(`unblock ${ap.bssid}`);
+                    } else {
+                        blacklistedMacs.set(ap.bssid, { reason: 'Rogue AP Isolation', time: new Date().toLocaleTimeString() });
+                        sendCommand(`block ${ap.bssid}`);
+                        playAlertTone('Critical');
+                        triggerHardwareAlarm();
+                    }
+                    document.getElementById('blacklistCount').textContent = blacklistedMacs.size;
+                    updateInspector();
+                    scheduleRender();
+                };
+            }
         }
+
+        document.getElementById('trustAllBtn').addEventListener('click', () => {
+            devices.forEach(d => {
+                whitelistedMacs.add(d.mac);
+                d.flags |= 1;
+            });
+            sendCommand('whitelist trust-all');
+            scheduleRender();
+            if (selectedEntityId) updateInspector();
+        });
+
+        document.getElementById('entitySearch').addEventListener('input', scheduleRender);
 
         function renderAlertsFeed() {
+            const feed = document.getElementById('alertsFeed');
             document.getElementById('alertCount').textContent = alerts.length;
-            const feed = document.getElementById('alertFeed');
+
             if (alerts.length === 0) {
-                feed.innerHTML = '<div style="color: var(--text-sub); font-size: 13px; text-align: center; padding: 40px 0;">No security threats detected yet.</div>';
+                feed.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 11px; padding: 20px;">Airspace secure. Zero jamming, deauth, or Evil Twin attacks detected.</div>';
                 return;
             }
+
             let html = '';
-            alerts.forEach(a => {
-                let sevClass = 'sev-low';
-                let badgeClass = 'badge-low';
-                let sevLabel = 'INFO';
-
-                if (a.score >= 80) { sevClass = 'sev-critical'; badgeClass = 'badge-critical'; sevLabel = 'CRITICAL'; }
-                else if (a.score >= 60) { sevClass = 'sev-high'; badgeClass = 'badge-high'; sevLabel = 'HIGH'; }
-                else if (a.score >= 40) { sevClass = 'sev-medium'; badgeClass = 'badge-medium'; sevLabel = 'MEDIUM'; }
-
-                html += `<div class="alert-item ${sevClass}">
-                    <div class="alert-header">
-                        <span class="alert-type">${a.type}</span>
-                        <span class="badge ${badgeClass}">${sevLabel} (${a.score})</span>
+            alerts.forEach(al => {
+                const isCrit = (al.severity === 'Critical' || al.score > 70);
+                html += `
+                    <div class="alert-item ${isCrit ? 'critical' : ''}">
+                        <div>
+                            <strong style="color: ${isCrit ? 'var(--accent-red)' : 'var(--accent-amber)'}; font-size: 11px;">
+                                ${al.type || 'Security Alert'}
+                            </strong>
+                            <div style="color: var(--text-muted); font-size: 10px; margin-top: 1px;">
+                                ${al.desc || 'Threat anomaly detected on perimeter'}
+                            </div>
+                        </div>
+                        <span class="badge ${isCrit ? 'badge-blacklisted' : 'badge-amber'}">${al.score || 80}</span>
                     </div>
-                    <div class="alert-desc">${a.desc} (BSSID: ${a.bssid})</div>
-                </div>`;
+                `;
             });
             feed.innerHTML = html;
         }
 
-        async function sendConsoleCmd() {
-            const input = document.getElementById('cmdInput');
-            const cmd = input.value.trim();
-            if (!cmd || !isConnected) return;
-
-            const textEncoder = new TextEncoder();
-            const writer = port.writable.getWriter();
-            await writer.write(textEncoder.encode(cmd + '\n'));
-            writer.releaseLock();
-
-            appendTerminalLine('> ' + cmd);
-            input.value = '';
-        }
-
-        function sendQuickCmd(cmdStr) {
-            document.getElementById('cmdInput').value = cmdStr;
-            sendConsoleCmd();
-        }
-
-        function appendTerminalLine(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            terminal.appendChild(div);
-            terminal.scrollTop = terminal.scrollHeight;
-        }
-
-        function updateUI() {
-            renderDevicesTable();
-            renderAPTable();
+        document.getElementById('clearAlertsBtn').addEventListener('click', () => {
+            alerts.length = 0;
             renderAlertsFeed();
+        });
+
+        // CLI Prompt
+        function sendCli() {
+            const val = cliInput.value.trim();
+            if (val) {
+                sendCommand(val);
+                cliInput.value = '';
+            }
         }
+        cliSendBtn.addEventListener('click', sendCli);
+        cliInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendCli(); });
+
+        // OLED CRT Virtual Screen Renderer
+        function notifyOledMode(modeTag) {
+            oledLines[0] = `${modeTag} CH:${targetChannel.value.padStart(2, '0')}`;
+        }
+
+        function renderOledScreen() {
+            const canvas = document.getElementById('oledCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.fillStyle = '#02060c';
+            ctx.fillRect(0, 0, w, h);
+
+            let primaryTint = '#10b981';
+            if (oledColorTheme === 'cyan') primaryTint = '#06b6d4';
+            else if (oledColorTheme === 'amber') primaryTint = '#f59e0b';
+
+            ctx.fillStyle = primaryTint;
+            ctx.font = '14px "JetBrains Mono", monospace';
+
+            ctx.fillText(oledLines[0] || '[SHIELD:SENTRY] CH:06', 14, 22);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.fillRect(14, 28, w - 28, 1);
+
+            ctx.fillStyle = primaryTint;
+            ctx.font = '13px "JetBrains Mono", monospace';
+            ctx.fillText(oledLines[1] || 'PPS: 142 | RSSI:-64dB', 14, 48);
+
+            const hasAlert = alerts.length > 0;
+            ctx.fillStyle = hasAlert ? '#ef4444' : primaryTint;
+            ctx.fillText(hasAlert ? 'THREAT: ELEVATED' : 'THREAT: NOMINAL', 14, 68);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.fillRect(14, 76, w - 28, 1);
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = '12px "JetBrains Mono", monospace';
+            ctx.fillText(hasAlert ? '! JAMMING / SPOOF DETECTED !' : 'PERIMETER SECURE', 14, 96);
+
+            ctx.fillStyle = primaryTint;
+            ctx.fillText(`AIRSPACE PATROL: ACTIVE`, 14, 116);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.fillRect(14, 124, w - 28, 1);
+
+            ctx.font = '11px "JetBrains Mono", monospace';
+            ctx.fillText(`BLK: ${blockedAttacksCount} | DEV: ${devices.size} | AP: ${accessPoints.size}`, 14, 140);
+        }
+
+        document.getElementById('oledTintBtn').addEventListener('click', () => {
+            if (oledColorTheme === 'emerald') oledColorTheme = 'cyan';
+            else if (oledColorTheme === 'cyan') oledColorTheme = 'amber';
+            else oledColorTheme = 'emerald';
+            document.getElementById('oledTintBtn').textContent = `🎨 Tint: ${oledColorTheme.toUpperCase()}`;
+            renderOledScreen();
+        });
+
+        // Offline Demo Mode
+        const demoBtn = document.getElementById('demoBtn');
+        demoBtn.addEventListener('click', () => {
+            if (isDemoMode) stopDemoMode();
+            else startDemoMode();
+        });
+
+        function startDemoMode() {
+            if (isConnected) disconnectSerial();
+            isDemoMode = true;
+            demoBtn.textContent = '⏹ Exit Demo';
+            statusPill.className = 'status-pill demo';
+            statusText.textContent = 'Demo Mode';
+            settingsModal.classList.remove('open');
+
+            appendConsole('=== 🎮 OFFLINE DEMO MODE ACTIVE ===');
+            appendConsole('Simulated 802.11 ambient traffic streaming.');
+
+            // Seed Mock APs
+            const mockAps = [
+                { id: 1, bssid: '70:4F:57:12:34:56', ssid: 'Office_Sentinel_5G', channel: 6, rssi: -48, beacons: 340 },
+                { id: 2, bssid: '24:A4:3C:99:88:77', ssid: 'IoT_Sensors_Mesh', channel: 1, rssi: -55, beacons: 210 },
+                { id: 3, bssid: 'D8:EC:5E:AA:BB:CC', ssid: 'Guest_Public', channel: 11, rssi: -68, beacons: 95 }
+            ];
+            mockAps.forEach(ap => accessPoints.set(ap.bssid, ap));
+
+            // Seed Mock Devices
+            const mockDevs = [
+                { id: 1, mac: 'F0:2F:74:11:22:33', vendor: 'Apple Inc.', channel: 6, trust: 95, rssi: -52, packets: 142, flags: 1 },
+                { id: 2, mac: '3C:71:BF:44:55:66', vendor: 'Espressif Inc.', channel: 1, trust: 80, rssi: -60, packets: 89, flags: 1 },
+                { id: 3, mac: '68:C6:3A:77:88:99', vendor: 'Samsung Electronics', channel: 11, trust: 50, rssi: -72, packets: 34, flags: 0 }
+            ];
+            whitelistedMacs.add('F0:2F:74:11:22:33');
+            mockDevs.forEach(d => devices.set(d.mac, d));
+
+            // Seed channel distribution
+            channelPackets[6] = 45;
+            channelPackets[1] = 25;
+            channelPackets[11] = 18;
+
+            scheduleRender();
+
+            let simSecs = 0;
+            demoInterval = setInterval(() => {
+                simSecs++;
+                totalStreamPackets += Math.floor(Math.random() * 4) + 1;
+                const pps = Math.floor(Math.random() * 30) + 90;
+                document.getElementById('telemPps').textContent = pps;
+                const mins = Math.floor(simSecs / 60).toString().padStart(2, '0');
+                const secs = (simSecs % 60).toString().padStart(2, '0');
+                document.getElementById('telemUptime').textContent = `${mins}:${secs}`;
+
+                channelPackets[Math.floor(Math.random() * 13) + 1] += 1;
+                renderSpectrumBars();
+                renderOledScreen();
+            }, 1000);
+        }
+
+        function stopDemoMode() {
+            isDemoMode = false;
+            clearInterval(demoInterval);
+            demoBtn.textContent = '🎮 Toggle Offline Demo';
+            statusPill.className = 'status-pill';
+            statusText.textContent = 'Disconnected';
+            appendConsole('--- Exited Demo Mode ---');
+        }
+
+        function handleDemoCommand(cmd) {
+            const lower = cmd.toLowerCase().trim();
+            if (lower.includes('eapol')) {
+                appendConsole('[SIMULATOR] Synthetic WPA Handshake Harvesting / KRACK triggered...');
+                setTimeout(() => {
+                    processLine('[STREAM:ALERT] {"id":1,"type":"EapolHarvesting","score":95,"severity":"Critical","desc":"WPA Handshake Harvesting: 4 auth/4 assoc cycles with protected EAPOL frames"}');
+                    processLine('[DEAUTH_DEFENSE] CH:6 ATK:DE:AD:BE:EF:CA:FE VIC:BROADCAST SPOOF:YES SEV:CRITICAL BLK:1 MSG:Handshake harvester isolated');
+                }, 500);
+            } else if (lower.includes('jam')) {
+                appendConsole('[SIMULATOR] Continuous Physical-Layer RF Jamming triggered (80% retry rate)...');
+                setTimeout(() => {
+                    processLine('[STREAM:ALERT] {"id":2,"type":"RFJamming","score":90,"severity":"Critical","desc":"Continuous RF Jamming: 80% retry rate anomaly detected"}');
+                    processLine('[DEAUTH_DEFENSE] CH:6 ATK:BA:AD:F0:0D:00:01 VIC:BROADCAST SPOOF:NO SEV:CRITICAL BLK:2 MSG:RF jammer quarantined');
+                }, 500);
+            } else if (lower.includes('deauth')) {
+                appendConsole('[SIMULATOR] Synthetic Deauth Flood triggered (60 frames)...');
+                setTimeout(() => {
+                    processLine('[STREAM:ALERT] {"id":3,"type":"DeauthenticationAttack","score":85,"severity":"High","desc":"Deauth flood jamming attack detected (Rate: 60 fps)"}');
+                    processLine('[DEAUTH_DEFENSE] CH:6 ATK:AA:BB:CC:DD:EE:01 VIC:BROADCAST SPOOF:NO SEV:HIGH BLK:3 MSG:Deauth mitigation active');
+                }, 500);
+            } else if (lower.includes('eviltwin')) {
+                appendConsole('[SIMULATOR] Rogue Evil Twin AP spawned cloning "Office_Sentinel_5G"...');
+                setTimeout(() => {
+                    processLine('[STREAM:ALERT] {"id":4,"type":"EvilTwinAttack","score":95,"severity":"Critical","desc":"Duplicate SSID on rogue BSSID with high overlapping signal"}');
+                    processLine('[DEAUTH_DEFENSE] CH:6 ATK:DE:AD:BE:EF:66:99 VIC:BROADCAST SPOOF:NO SEV:CRITICAL BLK:4 MSG:Defensive disassociation transmitted');
+                }, 500);
+            } else if (lower.includes('seq')) {
+                appendConsole('[SIMULATOR] Sequence Gap Anomaly / MAC Spoofing triggered...');
+                setTimeout(() => {
+                    processLine('[STREAM:ALERT] {"id":5,"type":"SequenceNumberAnomaly","score":85,"severity":"High","desc":"Sequence gap / backward roll anomaly detected (MAC spoofing signature)"}');
+                    processLine('[DEAUTH_DEFENSE] CH:6 ATK:18:FE:34:AA:BB:CC VIC:BROADCAST SPOOF:YES SEV:HIGH BLK:5 MSG:Spoofed transmitter airtime isolated');
+                }, 500);
+            } else if (lower.includes('karma')) {
+                appendConsole('[SIMULATOR] Karma / MANA Multi-SSID Rogue AP triggered...');
+                setTimeout(() => {
+                    processLine('[STREAM:ALERT] {"id":6,"type":"KarmaAttack","score":95,"severity":"Critical","desc":"Single BSSID broadcasting multi-SSID responses (Karma/MANA rogue AP)"}');
+                    processLine('[DEAUTH_DEFENSE] CH:6 ATK:02:1A:11:22:33:44 VIC:BROADCAST SPOOF:YES SEV:CRITICAL BLK:6 MSG:Karma phishing AP isolated');
+                }, 500);
+            } else if (lower.includes('drill')) {
+                appendConsole('[SIMULATOR] Executing full multi-vector attack drill...');
+                setTimeout(() => {
+                    processLine('[STREAM:ALERT] {"id":7,"type":"MultiVectorDrill","score":95,"severity":"Critical","desc":"Multi-vector attack drill executed across perimeter"}');
+                }, 500);
+            } else {
+                appendConsole(`Demo executed: '${cmd}'`);
+            }
+        }
+
+        // Cloud WebSocket Sync
+        const cloudWsInput = document.getElementById('cloudWsInput');
+        const cloudConnectBtn = document.getElementById('cloudConnectBtn');
+
+        cloudConnectBtn.addEventListener('click', () => {
+            if (isCloudSyncConnected) disconnectCloudSync();
+            else connectCloudSync();
+        });
+
+        function connectCloudSync() {
+            const wsUrl = cloudWsInput.value.trim();
+            if (!wsUrl) return;
+            appendConsole(`[CLOUD] Connecting to ${wsUrl}...`);
+            try {
+                cloudWs = new WebSocket(wsUrl);
+                cloudWs.onopen = () => {
+                    isCloudSyncConnected = true;
+                    cloudConnectBtn.textContent = 'Disconnect';
+                    statusPill.className = 'status-pill cloud-sync';
+                    statusText.textContent = 'Cloud Synced';
+                    settingsModal.classList.remove('open');
+                    appendConsole('[CLOUD] Synchronized with live on-board daemon.');
+                };
+                cloudWs.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.line) processLine(data.line);
+                    } catch (e) {
+                        processLine(event.data);
+                    }
+                };
+                cloudWs.onclose = () => disconnectCloudSync();
+            } catch (e) {
+                appendConsole('[CLOUD] Error: ' + e.message);
+            }
+        }
+
+        function disconnectCloudSync() {
+            if (cloudWs) {
+                try { cloudWs.close(); } catch(e) {}
+                cloudWs = null;
+            }
+            isCloudSyncConnected = false;
+            cloudConnectBtn.textContent = 'Sync';
+            statusPill.className = 'status-pill';
+            statusText.textContent = 'Disconnected';
+        }
+
+        // Reset All Data Cache
+        document.getElementById('clearDataBtn').addEventListener('click', () => {
+            devices.clear();
+            accessPoints.clear();
+            alerts.length = 0;
+            whitelistedMacs.clear();
+            blacklistedMacs.clear();
+            totalStreamPackets = 0;
+            blockedAttacksCount = 0;
+            selectedEntityId = null;
+            channelPackets.fill(0);
+            scheduleRender();
+            renderAlertsFeed();
+            updateInspector();
+            renderOledScreen();
+            settingsModal.classList.remove('open');
+            appendConsole('Local cache reset.');
+        });
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderSpectrumBars();
+            renderOledScreen();
+        });
     </script>
 </body>
 </html>
