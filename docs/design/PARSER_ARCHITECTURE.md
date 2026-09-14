@@ -31,7 +31,7 @@ The packet parser represents a strict, boundary-insulating translation layer bet
 
 ## Parser Specifications
 
-The parser resides in [wifi_frames.cpp](file:///home/voidnode/Work/IOT%20Firewall/Iot-Firewall-main/src/network/wifi_frames.cpp) and conforms to these strict requirements:
+The parser resides in [wifi_frames.cpp](file:///home/voidnode/Work/IOT%20Firewall/src/network/wifi_frames.cpp) and conforms to these strict requirements:
 
 1.  **Stateless Execution:**
     - References no global states.
