@@ -1,7 +1,15 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
+#include <stdint.h>
+#include <stddef.h>
 
+#if defined(ARDUINO)
 #include <Arduino.h>
+#elif defined(NATIVE_BUILD) || defined(UNIT_TEST) || !__has_include(<Arduino.h>)
+#include "core/arduino_mock.h"
+#else
+#include <Arduino.h>
+#endif
 
 /* =========================================================
    IEEE 802.11 PROTOCOL CONSTANTS
