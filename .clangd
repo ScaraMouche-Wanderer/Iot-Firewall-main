@@ -1,0 +1,13 @@
+CompileFlags:
+  CompilationDatabase: "."
+  Add:
+    - -Iinclude
+    - -Isrc
+    - -Itest
+    - -I.pio/libdeps/native/Unity/src
+    - -std=gnu++17
+    - -Wall
+    - -Wextra
+    - -DUNIT_TEST
+    - -DNATIVE_BUILD
+    - -DPLATFORMIO=60119
