@@ -1,8 +1,15 @@
 #ifndef ATTACK_SIMULATOR_H
 #define ATTACK_SIMULATOR_H
-
-#include <Arduino.h>
 #include <stdint.h>
+#include <stddef.h>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#elif defined(NATIVE_BUILD) || defined(UNIT_TEST) || !__has_include(<Arduino.h>)
+#include "core/arduino_mock.h"
+#else
+#include <Arduino.h>
+#endif
 
 /* =========================================================
    ATTACK SIMULATOR & FIREWALL VERIFICATION SUITE
