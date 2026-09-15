@@ -1,7 +1,17 @@
 #ifndef TYPES_H
 #define TYPES_H
+#include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
 
+#if defined(ARDUINO)
 #include <Arduino.h>
+#elif defined(NATIVE_BUILD) || defined(UNIT_TEST) || !__has_include(<Arduino.h>)
+#include "core/arduino_mock.h"
+#else
+#include <Arduino.h>
+#endif
+
 #include "constants.h"
 
 // Forward declaration of PacketInfo to prevent circular dependencies
