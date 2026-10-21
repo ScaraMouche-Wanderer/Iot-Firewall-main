@@ -62,7 +62,7 @@ Consumer Processing Loop (loop())
 9.  **Safe Built-in Attack Simulator:** Allows immediate verification and testing of Deauth floods, Evil Twin APs, Beacon floods, and multi-vector attack drills (`sim drill`) directly from the CLI or 1-click on the web dashboard.
 10. **Interactive Serial CLI & Web Serial Dashboard:** Serial monitor CLI and zero-dependency Web Serial HTML5 dashboard with retro phosphor OLED CRT HUD, real-time audio alarm sirens, 1-click device whitelisting, blacklist management, and an offline interactive demo mode.
 11. **Persistent Binary Logger:** Appends consolidated alerts directly to flash filesystem `/alerts.bin` with $O(1)$ random seek reads/writes and automatic rotation backups.
-12. **Comprehensive Self-Test & Native Unit Testing:** Built-in boot benchmark, hardware stress tests, and automated native host tests (`pio test -e native`, 27/27 passing) covering all detectors, hardware actuators, active blockers, channel defense locks, and OLED display drivers.
+12. **Comprehensive Self-Test & Native Unit Testing:** Built-in boot benchmark, hardware stress tests, and automated native host tests (`pio test -e native`, 32/32 passing) covering all detectors, hardware actuators, active blockers, channel defense locks, and OLED display drivers.
 
 > [!TIP]
 > 📖 **New to ESP32 or Wireless Security?** Check out the complete, step-by-step **[Real-World Implementation & Deployment Guide](docs/REAL_WORLD_GUIDE.md)**! It covers hardware selection, pinout wiring, 2-minute flashing, home deployment, OLED HUD setup, and safe attack simulations.
@@ -90,7 +90,7 @@ The codebase is organized into clean, modular subsystems where headers in `inclu
 │   ├── REAL_WORLD_GUIDE.md ── Complete deployment, pinout wiring & real attack defense guide
 │   ├── architecture/       ── Architectural pipeline and correlation engine design
 │   └── design/             ── Detailed memory layouts and parser specifications
-├── test/                   ── Native Host Test Suite (27 test cases, zero hardware required)
+├── test/                   ── Native Host Test Suite (32 test cases, zero hardware required)
 └── captures/               ── Automatic forensic .pcap captures directory (tshark output)
 ```
 
@@ -286,3 +286,8 @@ When connected via Serial Monitor (115200 baud), type `help` to list commands:
 | `actuator mute [on\|off]` | Toggle audible buzzer alarm siren |
 | `policy strict [on\|off]` | Toggle Zero-Trust IoT perimeter firewall enforcement |
 | `help` | Print CLI manual |
+
+## Presentation quick start
+
+Run `python3 tools/demo.py` for a local synthetic dashboard with no hardware.
+See [presentation and deployment runbook](docs/PRESENTATION.md) for demo steps and verification.
