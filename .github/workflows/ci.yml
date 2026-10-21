@@ -32,6 +32,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install --upgrade platformio
 
+      - name: Test presentation HTTP server without hardware
+        run: python -m unittest discover -s tools -p test_demo.py -v
+
       - name: Run Host-Side Native Unit Tests
         run: pio test -e native
 
