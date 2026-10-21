@@ -917,6 +917,10 @@
                 🔌 Connect Serial
             </button>
 
+            <button id="exportSnapshotBtn" class="btn-secondary" title="Download the current telemetry and alerts as JSON">
+                ↓ Export report
+            </button>
+
             <button id="consoleToggleBtn" class="btn-secondary" title="Open Sentinel Diagnostic CLI Terminal">
                 💻 CLI
             </button>
@@ -930,6 +934,11 @@
             </button>
         </div>
     </header>
+
+    <div id="demoNotice" hidden role="status" style="margin: 16px 24px 0; padding: 14px 18px; border: 1px solid var(--accent-green); border-radius: 8px; background: var(--bg-card);">
+        <strong>SIMULATED TELEMETRY</strong> — Events and blocking counters are synthetic. No radio frames are transmitted.
+        <button id="demoDrillBtn" class="btn-secondary" title="Run a synthetic multi-vector drill without hardware" style="margin-left: 12px;">Run demo drill</button>
+    </div>
 
     <!-- Unified Clean Defense & Drill Control Bar -->
     <div class="c2-command-strip">
@@ -2037,8 +2046,11 @@
         });
 
         function startDemoMode() {
+            if (isDemoMode) return;
             if (isConnected) disconnectSerial();
+            if (isCloudSyncConnected) disconnectCloudSync();
             isDemoMode = true;
+            document.getElementById('demoNotice').hidden = false;
             demoBtn.textContent = '⏹ Exit Demo';
             statusPill.className = 'status-pill demo';
             statusText.textContent = 'Demo Mode';
@@ -2089,6 +2101,7 @@
 
         function stopDemoMode() {
             isDemoMode = false;
+            document.getElementById('demoNotice').hidden = true;
             clearInterval(demoInterval);
             demoBtn.textContent = '🎮 Toggle Offline Demo';
             statusPill.className = 'status-pill';
@@ -2101,48 +2114,79 @@
             if (lower.includes('eapol')) {
                 appendConsole('[SIMULATOR] Synthetic WPA Handshake Harvesting / KRACK triggered...');
                 setTimeout(() => {
+                    if (!isDemoMode) return;
                     processLine('[STREAM:ALERT] {"id":1,"type":"EapolHarvesting","score":95,"severity":"Critical","desc":"WPA Handshake Harvesting: 4 auth/4 assoc cycles with protected EAPOL frames"}');
                     processLine('[DEAUTH_DEFENSE] CH:6 ATK:DE:AD:BE:EF:CA:FE VIC:BROADCAST SPOOF:YES SEV:CRITICAL BLK:1 MSG:Handshake harvester isolated');
                 }, 500);
             } else if (lower.includes('jam')) {
                 appendConsole('[SIMULATOR] Continuous Physical-Layer RF Jamming triggered (80% retry rate)...');
                 setTimeout(() => {
+                    if (!isDemoMode) return;
                     processLine('[STREAM:ALERT] {"id":2,"type":"RFJamming","score":90,"severity":"Critical","desc":"Continuous RF Jamming: 80% retry rate anomaly detected"}');
                     processLine('[DEAUTH_DEFENSE] CH:6 ATK:BA:AD:F0:0D:00:01 VIC:BROADCAST SPOOF:NO SEV:CRITICAL BLK:2 MSG:RF jammer quarantined');
                 }, 500);
             } else if (lower.includes('deauth')) {
                 appendConsole('[SIMULATOR] Synthetic Deauth Flood triggered (60 frames)...');
                 setTimeout(() => {
+                    if (!isDemoMode) return;
                     processLine('[STREAM:ALERT] {"id":3,"type":"DeauthenticationAttack","score":85,"severity":"High","desc":"Deauth flood jamming attack detected (Rate: 60 fps)"}');
                     processLine('[DEAUTH_DEFENSE] CH:6 ATK:AA:BB:CC:DD:EE:01 VIC:BROADCAST SPOOF:NO SEV:HIGH BLK:3 MSG:Deauth mitigation active');
                 }, 500);
             } else if (lower.includes('eviltwin')) {
                 appendConsole('[SIMULATOR] Rogue Evil Twin AP spawned cloning "Office_Sentinel_5G"...');
                 setTimeout(() => {
+                    if (!isDemoMode) return;
                     processLine('[STREAM:ALERT] {"id":4,"type":"EvilTwinAttack","score":95,"severity":"Critical","desc":"Duplicate SSID on rogue BSSID with high overlapping signal"}');
                     processLine('[DEAUTH_DEFENSE] CH:6 ATK:DE:AD:BE:EF:66:99 VIC:BROADCAST SPOOF:NO SEV:CRITICAL BLK:4 MSG:Defensive disassociation transmitted');
                 }, 500);
             } else if (lower.includes('seq')) {
                 appendConsole('[SIMULATOR] Sequence Gap Anomaly / MAC Spoofing triggered...');
                 setTimeout(() => {
+                    if (!isDemoMode) return;
                     processLine('[STREAM:ALERT] {"id":5,"type":"SequenceNumberAnomaly","score":85,"severity":"High","desc":"Sequence gap / backward roll anomaly detected (MAC spoofing signature)"}');
                     processLine('[DEAUTH_DEFENSE] CH:6 ATK:18:FE:34:AA:BB:CC VIC:BROADCAST SPOOF:YES SEV:HIGH BLK:5 MSG:Spoofed transmitter airtime isolated');
                 }, 500);
             } else if (lower.includes('karma')) {
                 appendConsole('[SIMULATOR] Karma / MANA Multi-SSID Rogue AP triggered...');
                 setTimeout(() => {
+                    if (!isDemoMode) return;
                     processLine('[STREAM:ALERT] {"id":6,"type":"KarmaAttack","score":95,"severity":"Critical","desc":"Single BSSID broadcasting multi-SSID responses (Karma/MANA rogue AP)"}');
                     processLine('[DEAUTH_DEFENSE] CH:6 ATK:02:1A:11:22:33:44 VIC:BROADCAST SPOOF:YES SEV:CRITICAL BLK:6 MSG:Karma phishing AP isolated');
                 }, 500);
             } else if (lower.includes('drill')) {
                 appendConsole('[SIMULATOR] Executing full multi-vector attack drill...');
                 setTimeout(() => {
+                    if (!isDemoMode) return;
                     processLine('[STREAM:ALERT] {"id":7,"type":"MultiVectorDrill","score":95,"severity":"Critical","desc":"Multi-vector attack drill executed across perimeter"}');
                 }, 500);
             } else {
                 appendConsole(`Demo executed: '${cmd}'`);
             }
         }
+
+        document.getElementById('demoDrillBtn').addEventListener('click', () => {
+            if (isDemoMode) handleDemoCommand('sim drill');
+        });
+
+        document.getElementById('exportSnapshotBtn').addEventListener('click', () => {
+            const report = {
+                schemaVersion: 1,
+                exportedAt: new Date().toISOString(),
+                mode: isDemoMode ? 'synthetic' : (isConnected || isCloudSyncConnected ? 'live' : 'disconnected'),
+                devices: Array.from(devices.values()),
+                accessPoints: Array.from(accessPoints.values()),
+                alerts: alerts.slice(),
+                blockedCount: blockedAttacksCount
+            };
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `sentinel-${report.mode}-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            appendConsole(`[EXPORT] Downloaded ${report.mode} telemetry report.`);
+        });
 
         // Cloud WebSocket Sync
         const cloudWsInput = document.getElementById('cloudWsInput');
@@ -2215,6 +2259,13 @@
         window.addEventListener('DOMContentLoaded', () => {
             renderSpectrumBars();
             renderOledScreen();
+            if (new URLSearchParams(window.location.search).get('demo') === '1') {
+                startDemoMode();
+                const scenario = new URLSearchParams(window.location.search).get('scenario');
+                if (['deauth', 'eviltwin', 'drill', 'eapol', 'seq', 'karma', 'jam'].includes(scenario)) {
+                    handleDemoCommand(`sim ${scenario}`);
+                }
+            }
         });
     </script>
 </body>
