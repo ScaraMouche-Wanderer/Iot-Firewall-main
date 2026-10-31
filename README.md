@@ -4,9 +4,13 @@ A high-performance, stateless, and deterministic Wireless Intrusion Detection Sy
 
 ---
 
+**Start exploring:** [Project brief](PROJECT_BRIEF.md) · [Laptop demo](docs/PRESENTATION.md) · [Native tests](test/test_native.cpp) · [Build & test runs](https://github.com/ScaraMouche-Wanderer/Iot-Firewall-main/actions)
+
 ## 🚀 Architectural Pipeline
 
-The system is organized into a clean, unidirectional, decoupled processing pipeline```
+The system is organized into a clean, unidirectional, decoupled processing pipeline:
+
+```text
 ESP32 WiFi Driver (Rx Promiscuous Callback / Fast Parsing)
      │
      ▼ (FreeRTOS observationQueue - Fast Decoupled Context)
