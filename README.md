@@ -4,7 +4,9 @@ A high-performance, stateless, and deterministic Wireless Intrusion Detection Sy
 
 ---
 
-**Start exploring:** [Project brief](PROJECT_BRIEF.md) · [Laptop demo](docs/PRESENTATION.md) · [Native tests](test/test_native.cpp) · [Build & test runs](https://github.com/ScaraMouche-Wanderer/Iot-Firewall-main/actions)
+**[Try the browser demo](https://scaramouche-wanderer.github.io/Iot-Firewall-main/)** and select **Run demo drill** to see simulated wireless alerts. It runs without an ESP32 and transmits no radio frames.
+
+[Project brief](PROJECT_BRIEF.md) · [Run the demo locally](docs/PRESENTATION.md) · [Native tests](test/test_native.cpp) · [Build & test runs](https://github.com/ScaraMouche-Wanderer/Iot-Firewall-main/actions)
 
 ## 🚀 Architectural Pipeline
 
