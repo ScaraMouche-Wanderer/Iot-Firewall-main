@@ -219,6 +219,10 @@
             box-shadow: 0 0 0 2px var(--border-glow);
         }
 
+        [hidden] {
+            display: none !important;
+        }
+
         button {
             background: linear-gradient(135deg, #0891b2, #0284c7);
             color: #ffffff;
@@ -916,6 +920,7 @@
             <button id="connectBtn" title="Connect directly to ESP32 via USB Serial @ 115200 baud">
                 🔌 Connect Serial
             </button>
+            <a id="demoSourceLink" hidden href="https://github.com/ScaraMouche-Wanderer/Iot-Firewall-main">Source on GitHub</a>
 
             <button id="exportSnapshotBtn" class="btn-secondary" title="Download the current telemetry and alerts as JSON">
                 ↓ Export report
@@ -1179,7 +1184,7 @@
 
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <!-- Cloud Relay WebSocket -->
-                <div>
+                <div id="cloudSettings">
                     <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Cloud / On-Board Relay Sync (WebSocket)</label>
                     <div style="display: flex; gap: 8px; margin-top: 4px;">
                         <input type="text" id="cloudWsInput" placeholder="ws://localhost:8765" value="ws://localhost:8765" style="flex: 1;">
@@ -1188,7 +1193,7 @@
                 </div>
 
                 <!-- Hardware Reboot -->
-                <div>
+                <div id="hardwareSettings">
                     <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Hardware Maintenance</label>
                     <div style="display: flex; gap: 8px; margin-top: 4px;">
                         <button id="rebootBtn" class="btn-secondary" style="flex: 1;">⚡ Hardware Reset (EN)</button>
@@ -1212,6 +1217,7 @@
         ========================================================= */
 
         // Serial & Network State
+        const demoOnly = document.documentElement.hasAttribute('data-demo-only');
         let port = null;
         let reader = null;
         let writer = null;
@@ -1432,6 +1438,7 @@
         });
 
         async function connectSerial() {
+            if (demoOnly) return;
             if (!('serial' in navigator)) {
                 alert('Web Serial API is not supported in this browser. Please use Chrome or Edge.');
                 return;
@@ -2041,6 +2048,7 @@
         // Offline Demo Mode
         const demoBtn = document.getElementById('demoBtn');
         demoBtn.addEventListener('click', () => {
+            if (demoOnly) return;
             if (isDemoMode) stopDemoMode();
             else startDemoMode();
         });
@@ -2198,6 +2206,7 @@
         });
 
         function connectCloudSync() {
+            if (demoOnly) return;
             const wsUrl = cloudWsInput.value.trim();
             if (!wsUrl) return;
             appendConsole(`[CLOUD] Connecting to ${wsUrl}...`);
@@ -2259,9 +2268,17 @@
         window.addEventListener('DOMContentLoaded', () => {
             renderSpectrumBars();
             renderOledScreen();
-            if (new URLSearchParams(window.location.search).get('demo') === '1') {
+            if (demoOnly) {
+                connectBtn.hidden = true;
+                document.getElementById('cloudSettings').hidden = true;
+                document.getElementById('hardwareSettings').hidden = true;
+                document.getElementById('demoSourceLink').hidden = false;
+                document.getElementById('terminalOutput').textContent = 'Synthetic demo console ready.';
+            }
+            const params = new URLSearchParams(window.location.search);
+            if (demoOnly || params.get('demo') === '1') {
                 startDemoMode();
-                const scenario = new URLSearchParams(window.location.search).get('scenario');
+                const scenario = params.get('scenario');
                 if (['deauth', 'eviltwin', 'drill', 'eapol', 'seq', 'karma', 'jam'].includes(scenario)) {
                     handleDemoCommand(`sim ${scenario}`);
                 }
