@@ -148,6 +148,23 @@
             gap: 8px;
         }
 
+        #demoSourceLink {
+            color: #67e8f9;
+            font-size: 12px;
+        }
+
+        #demoNotice {
+            margin-bottom: 12px;
+            padding: 14px 18px;
+            border: 1px solid var(--accent-green);
+            border-radius: 8px;
+            background: var(--bg-card);
+        }
+
+        #demoDrillBtn {
+            margin: 6px 0 0 8px;
+        }
+
         /* Status Pill */
         .status-pill {
             display: inline-flex;
@@ -232,6 +249,11 @@
             display: inline-flex;
             align-items: center;
             gap: 5px;
+        }
+
+        button:focus-visible {
+            outline: 2px solid #67e8f9;
+            outline-offset: 2px;
         }
 
         button:hover:not(:disabled) {
@@ -407,13 +429,13 @@
         /* Main Workspace Layout */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: 1.35fr 1fr;
+            grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
             gap: 14px;
         }
 
         @media (max-width: 1080px) {
             .dashboard-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
         }
 
@@ -780,6 +802,8 @@
 
         #oledCanvas {
             display: block;
+            max-width: 100%;
+            height: auto;
             image-rendering: pixelated;
         }
 
@@ -881,6 +905,56 @@
             max-width: 90%;
             box-shadow: var(--shadow-card);
         }
+
+        @media (max-width: 600px) {
+            body {
+                padding-inline: 10px;
+            }
+
+            header, .c2-command-strip, .hardware-strip, .card, .modal-box {
+                padding: 10px;
+            }
+
+            .header-telemetry, .header-actions, .mode-cluster, .spectrum-header {
+                flex-wrap: wrap;
+            }
+
+            .telem-divider {
+                display: none;
+            }
+
+            .mode-btn {
+                padding-inline: 7px;
+            }
+
+            .drill-select, .modal-box input, .cli-row input {
+                min-width: 0;
+            }
+
+            .drill-cluster {
+                width: 100%;
+            }
+
+            .drill-select {
+                flex: 1;
+                width: auto;
+            }
+
+            .spectrum-bars {
+                gap: 2px;
+            }
+
+            .inspector-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                overflow-wrap: anywhere;
+            }
+
+            #demoDrillBtn {
+                display: flex;
+                margin: 8px 0 0;
+                min-height: 36px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -938,9 +1012,9 @@
         </div>
     </header>
 
-    <div id="demoNotice" hidden role="status" style="margin: 16px 24px 0; padding: 14px 18px; border: 1px solid var(--accent-green); border-radius: 8px; background: var(--bg-card);">
+    <div id="demoNotice" hidden role="status">
         <strong>SIMULATED TELEMETRY</strong> — Events and blocking counters are synthetic. No radio frames are transmitted.
-        <button id="demoDrillBtn" class="btn-secondary" title="Run a synthetic multi-vector drill without hardware" style="margin-left: 12px;">Run demo drill</button>
+        <button id="demoDrillBtn" class="btn-secondary" title="Run a synthetic multi-vector drill without hardware">Run demo drill</button>
     </div>
 
     <!-- Unified Clean Defense & Drill Control Bar -->
